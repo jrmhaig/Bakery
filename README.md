@@ -39,5 +39,11 @@ copying any images.
 To do
 -----
 
-1. Actually write the code! This README is really just a declaration of intent.
-2. Get a PiFace Display. This would be much more useful than the PiFace Digital.
+A (possibly incomplete) list of things that need doing:
+
+1. Detect when a device has been plugged in.
+2. Mount device.
+3. Find list of available images.
+4. S1 and S2 to select image. Display selected image with LEDs.
+5. S3 to write image. Progress status with LEDs.
+6. Get a PiFace Display. This would be much more useful than the PiFace Digital.
