@@ -39,5 +39,5 @@ copying any images.
 To do
 -----
 
-1 Actually write the code! This README is really just a declaration of intent.
-2 Get a PiFace Display. This would be much more useful than the PiFace Digital.
+1. Actually write the code! This README is really just a declaration of intent.
+2. Get a PiFace Display. This would be much more useful than the PiFace Digital.
