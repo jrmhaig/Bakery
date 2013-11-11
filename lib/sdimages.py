@@ -10,4 +10,5 @@ class SdImages:
         files = []
         for dir in self.sources:
             files.extend([ dir + '/' + f for f in listdir(dir) ])
+        files.sort()
         return files

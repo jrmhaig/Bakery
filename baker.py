@@ -3,6 +3,8 @@ import configparser
 import pifacedigitalio
 from time import sleep
 
+pfd = pifacedigitalio.PiFaceDigital()
+
 def find_buttons(n):
     btns = []
     for i in range(7, -1, -1):
@@ -14,19 +16,32 @@ def find_buttons(n):
     btns.reverse()
     return btns
 
+def error():
+    while True:
+        pfd.output_port.value = 0xAA
+        sleep(1)
+        pfd.output_port.value = 0x00
+        sleep(1)
+
 config = configparser.ConfigParser()
 config.read('baker.cfg')
 
 dirs = config.get('images', 'source')
-print(dirs)
 
 sdi = SdImages([dirs])
 
 ls = sdi.list()
+max = len(ls)
+if max>8:
+    # No more than 8 images
+    error()
 
-pfd = pifacedigitalio.PiFaceDigital()
+image = 0
 
 while True:
+    print("Image: ", ls[image])
+    pfd.output_port.value = 2**image
+
     # Wait until the button has been released since last time
     event = pfd.input_port.value
     while event != 0:
@@ -40,13 +55,15 @@ while True:
     buttons = find_buttons(event)
 
     if buttons[0]:
-        # S1 - Previous image
-        # TODO
-        print("S1 pressed")
+        # S1 - Next image
+        image = image + 1
+        if image == max:
+            image = 0
     if buttons[1]:
-        # S2 - Next image
-        # TODO
-        print("S2 pressed")
+        # S2 - Previous image
+        image = image - 1
+        if image == -1:
+            image = max - 1
     if buttons[2]:
         # S3 - Write image
         # TODO
