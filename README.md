@@ -29,12 +29,39 @@ be used in its place, subject to the necessary code changes.
 The USB drive will be used to store the image files. This is not required if
 the main SD card is sufficiently large.
 
+Software requirements
+---------------------
+
+* hal
+
+or
+
+* python-pyudev
+* python3-pyudev
+
 Objective
 ---------
 
 Use the Raspberry Pi to write images to other SD cards. The primary objective
 is to be able create new Raspberry Pi OS cards but it can obviously be used for
 copying any images.
+
+Device listener
+---------------
+
+The module lib/devicelisterner.py will detect when a new SD card has been
+entered. At the moment it is detecting partitions but ideally it should get the
+the disk. So, if it finds:
+
+* /dev/sda1
+* /dev/sda2
+
+what it really needs to find is:
+
+* /dev/sda
+
+Question: Can the disk name be reliably found from the partition names? Or can
+it be detected directly?
 
 To do
 -----

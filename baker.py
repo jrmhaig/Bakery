@@ -1,5 +1,6 @@
 from lib.sdimages import *
-import configparser
+# configparser for Python 3
+import ConfigParser
 import pifacedigitalio
 from time import sleep
 
@@ -23,7 +24,8 @@ def error():
         pfd.output_port.value = 0x00
         sleep(1)
 
-config = configparser.ConfigParser()
+# configparser.ConfigParser for Python 3
+config = ConfigParser.ConfigParser()
 config.read('baker.cfg')
 
 dirs = config.get('images', 'source')
