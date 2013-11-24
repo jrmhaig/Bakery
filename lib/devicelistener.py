@@ -1,5 +1,5 @@
 import dbus
-import gobject
+from gi.repository import GLib
 
 class DeviceAddedListener:
     #def __init__(self, devices):
@@ -53,19 +53,19 @@ class DeviceAddedListener:
         except:
             size = 0
 
-        print "New storage device detectec:"
-        print "  device_file: %s" % device_file
-        print "  label: %s" % label
-        print "  fstype: %s" % fstype
+        print("New storage device detectec:")
+        print("  device_file: %s" % device_file)
+        print("  label: %s" % label)
+        print("  fstype: %s" % fstype)
         if mounted:
-            print "  mount_point: %s" % mount_point
+            print("  mount_point: %s" % mount_point)
         else:
-            print "  not mounted"
-        print "  size: %s (%.2fGB)" % (size, float(size) / 1024**3)
+            print("  not mounted")
+        print("  size: %s (%.2fGB)" % (size, float(size) / 1024**3))
 
 if __name__ == '__main__':
     from dbus.mainloop.glib import DBusGMainLoop
     DBusGMainLoop(set_as_default=True)
-    loop = gobject.MainLoop()
+    loop = GLib.MainLoop()
     DeviceAddedListener()
     loop.run()
