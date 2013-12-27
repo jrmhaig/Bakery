@@ -3,6 +3,13 @@ Bakery
 
 Use a Pi to make a Pi
 
+Objective
+---------
+
+Use the Raspberry Pi to write images to other SD cards. The primary objective
+is to be able create new Raspberry Pi OS cards but it can obviously be used for
+copying any images.
+
 WARNING 1
 ---------
 
@@ -19,7 +26,7 @@ Hardware Requirements
 ---------------------
 
 * USB to SD adapter
-* PiFace Digital
+* PiFace Digital *or* Control and Display
 * USB drive (optional)
 
 The PiFace Digital is used for interaction and feedback so the Bakery can be
@@ -38,13 +45,6 @@ or
 
 * python-pyudev
 * python3-pyudev
-
-Objective
----------
-
-Use the Raspberry Pi to write images to other SD cards. The primary objective
-is to be able create new Raspberry Pi OS cards but it can obviously be used for
-copying any images.
 
 Controls
 --------
