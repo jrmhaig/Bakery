@@ -33,6 +33,9 @@ class UdevEventListener(object):
                 event_matches_udev_function_map,
                 self.function_maps,
                 UdevEventListener.TERMINATE_SIGNAL))
+        self.devices = []
+        self.register('add', self.add_device)
+        self.register('remove', self.remove_device)
 
     def register(self, action, callback):
         self.function_maps.append( UdevFunctionMap (action, callback) )
@@ -46,6 +49,18 @@ class UdevEventListener(object):
         self.dispatcher.join()
         self.detector.terminate()
         self.detector.join()
+
+    def add_device(self, event):
+        if event.device in self.devices:
+            self.error(event.device + ' is already in the list!')
+        else:
+            self.devices.append(event.device)
+
+    def remove_device(self, event):
+        if event.device in self.devices:
+            self.devices.remove(event.device)
+        else:
+            self.error(event.device + ' is not in the list!')
 
 class UdevEvent(object):
     """A udev event"""
@@ -89,3 +104,4 @@ def handle_udev_events(queue, event_matches_function_map,
 def event_matches_udev_function_map(event, function_map):
     action_match = event.action == function_map.action
     return action_match
+

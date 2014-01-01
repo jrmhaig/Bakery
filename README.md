@@ -39,15 +39,19 @@ the main SD card is sufficiently large.
 Software requirements
 ---------------------
 
-* hal
-
-or
-
-* python-pyudev
 * python3-pyudev
 
 Controls
 --------
+
+### PiFace Control and Display
+
+* **Rocker:** Previous or next image
+* **Rocker button:** Select image
+* **Button 1:** Display connected devices
+* **Button 5:** Exit
+
+### PiFace Digital ###
 
 * **S1:** Previous image
 * **S2:** Next image
@@ -57,31 +61,18 @@ Controls
 Device listener
 ---------------
 
-The module lib/devicelisterner.py will detect when a new SD card has been
-entered. At the moment it is detecting partitions but ideally it should get the
-the disk. So, if it finds:
-
-* /dev/sda1
-* /dev/sda2
-
-what it really needs to find is:
-
-* /dev/sda
-
-Question: Can the disk name be reliably found from the partition names? Or can
-it be detected directly?
+The module lib/udevevents.py listens for devices added via the USB ports.
+These are added or removed to a list that can be displayed with button 1.
 
 To do
 -----
 
 A (possibly incomplete) list of things that need doing:
 
-1. Detect when a device has been plugged in.
-2. Mount device.
-3. S1 and S2 to select image. Display selected image with LEDs.
-4. S3 to write image. Progress status with LEDs.
-5. Create instruction file that can be written to an output file, including the
+1. Mount device.
+2. S3 to write image. Progress status with LEDs.
+3. Create instruction file that can be written to an output file, including the
    list of images.
-6. Maybe it should take more than just a single button press to start writing
+4. Maybe it should take more than just a single button press to start writing
    the image.
-7. Get a PiFace Display. This would be much more useful than the PiFace Digital.
+5. Allow for selecting device and image to write via CAD.

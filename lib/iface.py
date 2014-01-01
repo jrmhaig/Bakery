@@ -4,15 +4,15 @@ from lib.udevevents import *
 from time import sleep
 
 class ITools:
-    def hw_connect( images ):
+    def hw_connect( images, udev ):
         """Factory method to connect to whatever harware is available."""
         try:
-            return IFace_PiFaceCAD( images )
+            return IFace_PiFaceCAD( images, udev )
         except pifacecad.core.NoPiFaceCADDetectedError:
             print("No PiFace CAD attached")
         
         try:
-            return IFace_PiFaceDigital( images )
+            return IFace_PiFaceDigital( images, udev )
         except pifacedigitalio.core.NoPiFaceDigitalDetectedError:
             print("No PiFace Digital attached")
         
@@ -20,15 +20,11 @@ class ITools:
 
 class IFace:
 
-    def __init__(self, images):
+    def __init__(self, images, udev):
         self.images = images
         self.images.pointer = 0
 
-        self.devices = []
-
-        self.udev_listener = UdevEventListener()
-        self.udev_listener.register('add', self.add_device)
-        self.udev_listener.register('remove', self.remove_device)
+        self.udev_listener = udev
         self.udev_listener.activate()
 
         self.initialise()
@@ -36,18 +32,6 @@ class IFace:
 
     def cleanup(self):
         self.udev_listener.deactivate()
-
-    def add_device(self, event):
-        if event.device in self.devices:
-            self.error(event.device + ' is already in the list!')
-        else:
-            self.devices.append(event.device)
-
-    def remove_device(self, event):
-        if event.device in self.devices:
-            self.devices.remove(event.device)
-        else:
-            self.error(event.device + ' is already in the list!')
 
     def alert(self):
         """Display an alert"""
@@ -78,9 +62,9 @@ class IFace:
 
 class IFace_PiFaceCAD(IFace):
 
-    def __init__(self, images):
+    def __init__(self, images, udev):
         self.hw = pifacecad.PiFaceCAD()
-        super().__init__(images)
+        super().__init__(images, udev)
 
     def initialise(self):
         self.hw_name = 'PiFace Control and Display'
@@ -97,20 +81,25 @@ class IFace_PiFaceCAD(IFace):
         self.hw.lcd.write("ERROR\n" + message)
         exit(1)
 
+    def select_image(self, event):
+        self.images.select()
+        self.hw.lcd.clear()
+        self.hw.lcd.write(self.images.current())
+
     def prev_image(self, event):
         self.hw.lcd.clear()
-        self.hw.lcd.write(self.images.prev().name)
+        self.hw.lcd.write(self.images.prev())
 
     def next_image(self, event):
         self.hw.lcd.clear()
-        self.hw.lcd.write(self.images.next().name)
+        self.hw.lcd.write(self.images.next())
 
     def show_devices(self, event):
         self.hw.lcd.clear()
-        if len(self.devices) == 0:
+        if len(self.udev_listener.devices) == 0:
             self.hw.lcd.write('NONE')
         else:
-            for dev in self.devices:
+            for dev in self.udev_listener.devices:
                 self.hw.lcd.write(dev)
 
     def quit(self, event):
@@ -118,10 +107,11 @@ class IFace_PiFaceCAD(IFace):
         self.finish = 1
 
     def loop(self):
-        self.hw.lcd.write(self.images.current().name)
+        self.hw.lcd.write(self.images.current())
         self.finish = 0
 
         listener = pifacecad.SwitchEventListener(chip=self.hw)
+        listener.register(5, pifacecad.IODIR_FALLING_EDGE, self.select_image)
         listener.register(6, pifacecad.IODIR_FALLING_EDGE, self.prev_image)
         listener.register(7, pifacecad.IODIR_FALLING_EDGE, self.next_image)
         listener.register(4, pifacecad.IODIR_FALLING_EDGE, self.quit)
@@ -137,9 +127,9 @@ class IFace_PiFaceCAD(IFace):
 
 class IFace_PiFaceDigital(IFace):
 
-    def __init__(self, images):
+    def __init__(self, images, udev):
         self.hw = pifacedigitalio.PiFaceDigital()
-        super().__init__(images)
+        super().__init__(images, udev)
 
     def initialise(self):
         if (len(self.images) > 8 ):
