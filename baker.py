@@ -64,6 +64,7 @@ sdi = SdImages(*[dirs])
 iface = ITools.hw_connect( sdi )
 
 iface.loop()
+iface.cleanup()
 
 #ls = sdi.list()
 #max = len(ls)

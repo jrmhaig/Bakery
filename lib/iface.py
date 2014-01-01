@@ -1,5 +1,6 @@
 import pifacecad
 import pifacedigitalio
+from lib.udevevents import *
 from time import sleep
 
 class ITools:
@@ -22,14 +23,37 @@ class IFace:
     def __init__(self, images):
         self.images = images
         self.images.pointer = 0
+
+        self.devices = []
+
+        self.udev_listener = UdevEventListener()
+        self.udev_listener.register('add', self.add_device)
+        self.udev_listener.register('remove', self.remove_device)
+        self.udev_listener.activate()
+
         self.initialise()
         self.alert()
+
+    def cleanup(self):
+        self.udev_listener.deactivate()
+
+    def add_device(self, event):
+        if event.device in self.devices:
+            self.error(event.device + ' is already in the list!')
+        else:
+            self.devices.append(event.device)
+
+    def remove_device(self, event):
+        if event.device in self.devices:
+            self.devices.remove(event.device)
+        else:
+            self.error(event.device + ' is already in the list!')
 
     def alert(self):
         """Display an alert"""
         print("Ready to go with:", self.hw_name)
 
-    def Error(self, message):
+    def error(self, message):
         """Display an error"""
         print("Error!\n" + message)
         self.log('error', message)
@@ -69,7 +93,7 @@ class IFace_PiFaceCAD(IFace):
             sleep(0.2)
         self.hw.lcd.backlight_on()
 
-    def Error(self, message):
+    def error(self, message):
         self.hw.lcd.write("ERROR\n" + message)
         exit(1)
 
@@ -80,6 +104,14 @@ class IFace_PiFaceCAD(IFace):
     def next_image(self, event):
         self.hw.lcd.clear()
         self.hw.lcd.write(self.images.next().name)
+
+    def show_devices(self, event):
+        self.hw.lcd.clear()
+        if len(self.devices) == 0:
+            self.hw.lcd.write('NONE')
+        else:
+            for dev in self.devices:
+                self.hw.lcd.write(dev)
 
     def quit(self, event):
         self.hw.lcd.clear()
@@ -93,6 +125,7 @@ class IFace_PiFaceCAD(IFace):
         listener.register(6, pifacecad.IODIR_FALLING_EDGE, self.prev_image)
         listener.register(7, pifacecad.IODIR_FALLING_EDGE, self.next_image)
         listener.register(4, pifacecad.IODIR_FALLING_EDGE, self.quit)
+        listener.register(0, pifacecad.IODIR_FALLING_EDGE, self.show_devices)
         listener.activate()
 
         while self.finish == 0:
