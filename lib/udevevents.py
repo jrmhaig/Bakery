@@ -89,19 +89,3 @@ def handle_udev_events(queue, event_matches_function_map,
 def event_matches_udev_function_map(event, function_map):
     action_match = event.action == function_map.action
     return action_match
-
-###########################################################################
-
-devices = []
-
-def add_device(event):
-    if event.device in devices:
-        print(event.device, 'is already in the list!')
-    else:
-        devices.append(event.device)
-
-def remove_device(event):
-    if event.device in devices:
-        devices.remove(event.device)
-    else:
-        print(event.device, 'was not in the list!')
