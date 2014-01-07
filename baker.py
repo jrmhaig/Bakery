@@ -1,6 +1,7 @@
 from lib.selectlist import *
 from lib.iface import *
-from lib.udevevents import *
+#from lib.udevevents import *
+from lib.diskdetector import *
 import configparser
 from time import sleep
 
@@ -11,9 +12,11 @@ dirs = config.get('images', 'source')
 
 #sdi = SdImages(*[dirs])
 sdi = disk_image_list(*[dirs])
-udev = UdevEventListener()
+#udev = UdevEventListener()
+disk = DiskEventListener()
 
-iface = ITools.hw_connect( sdi, udev )
+#iface = ITools.hw_connect( sdi, udev )
+iface = ITools.hw_connect( sdi, disk )
 
 iface.loop()
 iface.cleanup()

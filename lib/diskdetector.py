@@ -2,9 +2,10 @@
 # (Thanks, guys)
 import multiprocessing
 import threading
-import pyudev
+from time import sleep
+from subprocess import call
 
-class UdevFunctionMap(object):
+class DiskFunctionMap(object):
     """Map actions to callback functions"""
     def __init__(self, action, callback, settle_time=None):
         self.action = action
@@ -14,7 +15,7 @@ class UdevFunctionMap(object):
         s = "Action:  {action}\n"
         return s.format(action=self.action)
 
-class UdevEventListener(object):
+class DiskEventListener(object):
     """Listen for events on udev"""
 
     TERMINATE_SIGNAL = 1
@@ -22,23 +23,23 @@ class UdevEventListener(object):
     def __init__(self):
         self.function_maps = list()
         self.queue = multiprocessing.Queue()
+        self.watching = [ '/dev/sda' ]
         self.detector = multiprocessing.Process(
-            target=watch_udev_events,
-            args=(
-                self.queue,))
+            target=watch_disk_events,
+            args=(self.queue, self.watching))
         self.dispatcher = threading.Thread(
-            target=handle_udev_events,
+            target=handle_events,
             args=(
                 self.queue,
                 event_matches_udev_function_map,
                 self.function_maps,
-                UdevEventListener.TERMINATE_SIGNAL))
+                DiskEventListener.TERMINATE_SIGNAL))
         self.devices = []
         self.register('add', self.add_device)
         self.register('remove', self.remove_device)
 
     def register(self, action, callback):
-        self.function_maps.append( UdevFunctionMap (action, callback) )
+        self.function_maps.append( DiskFunctionMap (action, callback) )
 
     def activate(self):
         self.detector.start()
@@ -73,20 +74,32 @@ class UdevEvent(object):
             "device: {device}"
         return s.format(action=self.action, device=self.device)
 
+class DiskEvent(object):
+    """A disk event"""
+    def __init__(self, action, device):
+        self.action = action
+        self.device = device
+
+    def __str__(self):
+        s = "action: {action}\n" \
+            "device: {device}"
+        return s.format(action=self.action, device=self.device)
+
 ###########################################################################
 
-def watch_udev_events(queue):
-    """Watch for udev events"""
-    context = pyudev.Context()
-    monitor = pyudev.Monitor.from_netlink(context)
-    monitor.filter_by('block', 'disk')
-    for action, device in monitor:
-        if action == 'add' or action == 'remove':
-            print(action)
-            print(device.device_node)
-            queue.put(UdevEvent(action, device.device_node))
+def watch_disk_events(queue, watching):
+    """Watch for new disks"""
+    on = 0
+    actions = [ 'remove', 'add' ]
+    while True:
+        # TODO Fix the hard-wired path
+        for dev in watching:
+            if on != call(["/home/pi/Bakery/probe.sh", dev]):
+                on = 1 - on
+                queue.put(DiskEvent(actions[on], dev))
+        sleep(1)
 
-def handle_udev_events(queue, event_matches_function_map,
+def handle_events(queue, event_matches_function_map,
                        function_maps, terminate_signal):
     """Handle udev events"""
     while True:
