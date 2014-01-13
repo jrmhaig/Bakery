@@ -18,6 +18,12 @@ loss if used without care.
 
 Did you read WARNING 1? If not, go back and read it again.
 
+## Requirements
+
+### Hardware
+
+* PiFace Control and Displa
+
 ## Operation
 
 Currently, this will assume that there is an image called:
@@ -32,7 +38,11 @@ This image will then be unzipped and written directly to the disk.
 
 To run:
 
-    python3 bakery3.py
+    sudo python3 bakery.py
+
+Press and hold button number 5 (the one separate from the others) for five
+seconds. When you release the image will start to be written to the disk.
+The progress is displayed on the LCD.
 
 ## Limitations
 
@@ -41,5 +51,6 @@ To run:
 * /dev/sda is not checked to exist.
 * There is no way to select different images.
 * Feedback requires a monitor. 
-
-Communication will be done via a PiFace CAD.
+* Needs to be run with sudo. Can this be avoided?
+* Progress bar should be made up of blocks instead of 'X's.
+* No 'exit' button.
