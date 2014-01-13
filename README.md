@@ -22,7 +22,7 @@ Did you read WARNING 1? If not, go back and read it again.
 
 ### Hardware
 
-* PiFace Control and Displa
+* PiFace Control and Display
 
 ## Operation
 
@@ -46,11 +46,9 @@ The progress is displayed on the LCD.
 
 ## Limitations
 
-* Image writing starts immediately without confirmation.
 * The image is not checked to exist.
 * /dev/sda is not checked to exist.
 * There is no way to select different images.
-* Feedback requires a monitor. 
 * Needs to be run with sudo. Can this be avoided?
 * Progress bar should be made up of blocks instead of 'X's.
 * No 'exit' button.
