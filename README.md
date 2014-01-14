@@ -28,7 +28,7 @@ Did you read WARNING 1? If not, go back and read it again.
 
 Currently, this will assume that there is an image called:
 
-    /home/pi/images/wheezy-raspbian.img.gz
+    /home/pi/images/9pi.img.gz
 
 and there is an a storage device mounted at:
 
@@ -50,7 +50,6 @@ The progress is displayed on the LCD.
 * /dev/sda is not checked to exist.
 * There is no way to select different images.
 * Needs to be run with sudo. Can this be avoided?
-* Progress bar should be made up of blocks instead of 'X's.
 * No 'exit' button.
 * Does not start on boot.
 * It would be useful to mount and configure the image after installing.

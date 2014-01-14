@@ -14,6 +14,13 @@ class BakeryDisplay:
         self.listener.register(4, pifacecad.IODIR_RISING_EDGE, self.released)
         self.listener.activate()
 
+        self.part_block = []
+        n = 0
+        for i in range(4,-1,-1):
+            n = n + (2**i)
+            self.part_block.append( pifacecad.LCDBitmap([n]*8) )
+        self.cad.lcd.store_custom_bitmap(1, self.part_block[4])
+
     def pressed(self, event):
         """Button has been pressed
 
@@ -31,10 +38,18 @@ class BakeryDisplay:
 
         """
         if time() > self.press_time + 5:
+            self.cad.lcd.clear()
+
+            # Top line
             self.cad.lcd.set_cursor(0, 0)
             self.cad.lcd.write("Complete:  0.00%")
+
+            # Second line
+            self.progress_pointer=0
+            self.cad.lcd.store_custom_bitmap(0, self.part_block[0])
             self.cad.lcd.set_cursor(0, 1)
-            self.cad.lcd.write("................")
+            self.cad.lcd.write_custom_bitmap(0)
+
             self.write_function(self)
 
     def progress(self, percent):
@@ -51,6 +66,21 @@ class BakeryDisplay:
         else:
             self.cad.lcd.set_cursor(10, 0)
             self.cad.lcd.write("{0:5.2f}".format(percent))
-            l = int(16 * percent / 100)
-            self.cad.lcd.set_cursor(0, 1)
-            self.cad.lcd.write('X'*l)
+            k = percent / 6.125   #    percent * 16 / 100
+            l = int(k)            #    Number of complete blocks
+            m = int((k - l) * 5)  #    Number of lines in partial block
+
+            # Wrapped in an 'if' block to save a bit of time
+            # Writing a character is slow - avoid if possible
+            if self.progress_pointer < l:
+                while self.progress_pointer < l:
+                    self.cad.lcd.set_cursor(self.progress_pointer, 1)
+                    self.cad.lcd.write_custom_bitmap(1)
+                    self.progress_pointer = self.progress_pointer + 1
+
+                self.cad.lcd.set_cursor(self.progress_pointer, 1)
+                self.cad.lcd.store_custom_bitmap(0, self.part_block[m])
+                self.cad.lcd.write_custom_bitmap(0)
+            else:
+                # Don't need to re-write character. Just change the bitmap.
+                self.cad.lcd.store_custom_bitmap(0, self.part_block[m])
