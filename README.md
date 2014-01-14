@@ -52,3 +52,5 @@ The progress is displayed on the LCD.
 * Needs to be run with sudo. Can this be avoided?
 * Progress bar should be made up of blocks instead of 'X's.
 * No 'exit' button.
+* Does not start on boot.
+* It would be useful to mount and configure the image after installing.
