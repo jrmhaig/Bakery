@@ -51,7 +51,7 @@ Note that images provided by distributions may be packaged up in various forms,
 such as tar, tar.gz and zip. None of these will work so you will need to unpack
 them and gzip the image.
 
-## Limitations
+## To do list
 
 * Needs to be run with sudo. Can this be avoided?
 * No 'exit' button.
@@ -69,4 +69,6 @@ them and gzip the image.
   single character?
 * If an image is not selected or a disk is not present it shouldn't print
   'Completed 0.00%' before printing the error message.
-* Device to use is hardwired to the /dev/sda.
+* Device to use is hardwired to /dev/sda.
+* The 'no SD card' mark is a '_' character, which isn't quite the bottom line.
+  Make a new bitmap for the bottom line to look better with the block.

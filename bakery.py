@@ -12,8 +12,6 @@ images = disk_image_list('/home/pi/images')
 disks = DiskEventListener()
 disks.activate()
 
-display = BakeryDisplay(disks, write_image)
-
 def write_image(display):
     if len(disks.devices) == 0:
         display.cad.lcd.clear()
@@ -55,5 +53,7 @@ def write_image(display):
 
     display.progress(-1)
     print("And finished")
+
+display = BakeryDisplay(disks, write_image)
 
 display.menu(images)
