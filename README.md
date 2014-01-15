@@ -35,6 +35,22 @@ Use the rocker switch to move between different images and press to select.
 Press and hold button number 5 for five seconds to write the image to the SD
 card. The progress will be written on the display.
 
+## Images
+
+Images (and only images) should be stored in the directory
+
+    /home/pi/images
+
+zipped up with:
+
+    gzip image.img
+
+so that the file has a `.img.gz` extension.
+
+Note that images provided by distributions may be packaged up in various forms,
+such as tar, tar.gz and zip. None of these will work so you will need to unpack
+them and gzip the image.
+
 ## Limitations
 
 * /dev/sda is not checked to exist.
@@ -43,5 +59,7 @@ card. The progress will be written on the display.
 * Does not start on boot.
 * It would be useful to mount and configure the image after installing.
 * It doesn't deal well with no image being selected.
-* Selecting images is a bit slow. Does it need to clear the screen eachh time?
-* Any files in /home/pi/images will be listed but only .gz files will work.
+* Selecting images is a bit slow. Does it need to clear the screen each time?
+* Any files in /home/pi/images will be listed but only .img.gz files will work.
+  It may be helpful to structure this in such a way that there can be other
+  files, such as README files.
