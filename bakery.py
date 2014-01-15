@@ -2,19 +2,28 @@ import subprocess
 import signal
 import re
 from lib.bakerydisplay import *
+from lib.selectlist import *
 from time import sleep
 from struct import unpack
 
-image = '/home/pi/images/9pi.img.gz'
-
-# Uncompressed size of a gzip file is stored in the last 4 bytes
-fl = open(image, 'rb')
-fl.seek(-4, 2)
-r = fl.read()
-fl.close()
-size = unpack('<I', r)[0]
+images = disk_image_list('/home/pi/images')
 
 def write_image(display):
+    image = str(images.current_full_path())
+    if image == None:
+        display.cad.lcd.clear()
+        display.cad.lcd.write('No image selected')
+        return 0
+
+    print("Image:", image)
+    # Uncompressed size of a gzip file is stored in the last 4 bytes
+    fl = open(image, 'rb')
+    fl.seek(-4, 2)
+    r = fl.read()
+    fl.close()
+    size = unpack('<I', r)[0]
+
+    print("Image:", image)
     unzip = subprocess.Popen(['zcat', image], stdout=subprocess.PIPE)
     dd = subprocess.Popen(['dd', 'of=/dev/sda', 'bs=1M'], stdin=unzip.stdout, stderr=subprocess.PIPE)
     print("unzip PID:", unzip.pid)
@@ -42,5 +51,4 @@ def write_image(display):
 
 display = BakeryDisplay(write_image)
 
-while True:
-    pass
+display.menu(images)

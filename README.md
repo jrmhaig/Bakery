@@ -26,30 +26,22 @@ Did you read WARNING 1? If not, go back and read it again.
 
 ## Operation
 
-Currently, this will assume that there is an image called:
-
-    /home/pi/images/9pi.img.gz
-
-and there is an a storage device mounted at:
-
-    /dev/sda
-
-This image will then be unzipped and written directly to the disk.
-
-To run:
+Run with:
 
     sudo python3 bakery.py
 
-Press and hold button number 5 (the one separate from the others) for five
-seconds. When you release the image will start to be written to the disk.
-The progress is displayed on the LCD.
+Images are found in /home/pi/images and should be gzipped.
+Use the rocker switch to move between different images and press to select.
+Press and hold button number 5 for five seconds to write the image to the SD
+card. The progress will be written on the display.
 
 ## Limitations
 
-* The image is not checked to exist.
 * /dev/sda is not checked to exist.
-* There is no way to select different images.
 * Needs to be run with sudo. Can this be avoided?
 * No 'exit' button.
 * Does not start on boot.
 * It would be useful to mount and configure the image after installing.
+* It doesn't deal well with no image being selected.
+* Selecting images is a bit slow. Does it need to clear the screen eachh time?
+* Any files in /home/pi/images will be listed but only .gz files will work.

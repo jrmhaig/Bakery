@@ -12,7 +12,9 @@ class BakeryDisplay:
         self.listener = pifacecad.SwitchEventListener(chip=self.cad)
         self.listener.register(4, pifacecad.IODIR_FALLING_EDGE, self.pressed)
         self.listener.register(4, pifacecad.IODIR_RISING_EDGE, self.released)
-        self.listener.activate()
+        self.listener.register(5, pifacecad.IODIR_FALLING_EDGE, self.select)
+        self.listener.register(6, pifacecad.IODIR_FALLING_EDGE, self.prev)
+        self.listener.register(7, pifacecad.IODIR_FALLING_EDGE, self.next)
 
         self.part_block = []
         n = 0
@@ -84,3 +86,29 @@ class BakeryDisplay:
             else:
                 # Don't need to re-write character. Just change the bitmap.
                 self.cad.lcd.store_custom_bitmap(0, self.part_block[m])
+
+    def menu(self, slist):
+        self.cad.lcd.write(slist.current())
+        # TODO Use this to have an exit button
+        self.finish = 0
+
+        # TODO Can this be passed as an arguement to the listener functions?
+        self.slist = slist
+
+        self.listener.activate()
+
+        while self.finish == 0:
+            pass
+
+    def prev(self, event):
+        self.cad.lcd.clear()
+        self.cad.lcd.write(self.slist.prev())
+
+    def next(self, event):
+        self.cad.lcd.clear()
+        self.cad.lcd.write(self.slist.next())
+
+    def select(self, event):
+        self.slist.select()
+        self.cad.lcd.clear()
+        self.cad.lcd.write(self.slist.current())
