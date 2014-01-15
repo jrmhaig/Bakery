@@ -53,13 +53,20 @@ them and gzip the image.
 
 ## Limitations
 
-* /dev/sda is not checked to exist.
 * Needs to be run with sudo. Can this be avoided?
 * No 'exit' button.
 * Does not start on boot.
 * It would be useful to mount and configure the image after installing.
 * It doesn't deal well with no image being selected.
-* Selecting images is a bit slow. Does it need to clear the screen each time?
 * Any files in /home/pi/images will be listed but only .img.gz files will work.
   It may be helpful to structure this in such a way that there can be other
   files, such as README files.
+* I am having problems with the USB-SD adapter arbitrarily remounting. I don't
+  know if this is to do with the SD card, the adapter or the power supply.
+* Switching between images doesn't overwrite properly if the new name is
+  shorter than the old.
+* Why does the image selector look like '[ ]' while the device indicator is a
+  single character?
+* If an image is not selected or a disk is not present it shouldn't print
+  'Completed 0.00%' before printing the error message.
+* Device to use is hardwired to the /dev/sda.

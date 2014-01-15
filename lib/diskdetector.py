@@ -7,7 +7,7 @@ from subprocess import call
 
 class DiskFunctionMap(object):
     """Map actions to callback functions"""
-    def __init__(self, action, callback, settle_time=None):
+    def __init__(self, action, callback):
         self.action = action
         self.callback = callback
 
@@ -16,7 +16,7 @@ class DiskFunctionMap(object):
         return s.format(action=self.action)
 
 class DiskEventListener(object):
-    """Listen for events on udev"""
+    """Listen for disk events"""
 
     TERMINATE_SIGNAL = 1
 
@@ -31,7 +31,7 @@ class DiskEventListener(object):
             target=handle_events,
             args=(
                 self.queue,
-                event_matches_udev_function_map,
+                event_matches_function_map,
                 self.function_maps,
                 DiskEventListener.TERMINATE_SIGNAL))
         self.devices = []
@@ -63,17 +63,6 @@ class DiskEventListener(object):
         else:
             self.error(event.device + ' is not in the list!')
 
-class UdevEvent(object):
-    """A udev event"""
-    def __init__(self, action, device):
-        self.action = action
-        self.device = device
-
-    def __str__(self):
-        s = "action: {action}\n" \
-            "device: {device}"
-        return s.format(action=self.action, device=self.device)
-
 class DiskEvent(object):
     """A disk event"""
     def __init__(self, action, device):
@@ -88,7 +77,12 @@ class DiskEvent(object):
 ###########################################################################
 
 def watch_disk_events(queue, watching):
-    """Watch for new disks"""
+    """Watch for new disks
+
+    A USB-SD adapter may appear in /dev even if there is no SD present. This
+    function uses fdisk to check if a card has been inserted.
+
+    """
     on = 0
     actions = [ 'remove', 'add' ]
     while True:
@@ -101,7 +95,7 @@ def watch_disk_events(queue, watching):
 
 def handle_events(queue, event_matches_function_map,
                        function_maps, terminate_signal):
-    """Handle udev events"""
+    """Handle events"""
     while True:
         event = queue.get()
         if event == terminate_signal:
@@ -116,7 +110,7 @@ def handle_events(queue, event_matches_function_map,
         for function in functions:
             function(event)
 
-def event_matches_udev_function_map(event, function_map):
+def event_matches_function_map(event, function_map):
     action_match = event.action == function_map.action
     return action_match
 

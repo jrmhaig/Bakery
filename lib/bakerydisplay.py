@@ -1,8 +1,10 @@
 import pifacecad
+from os.path import basename
 from time import sleep, time
 
 class BakeryDisplay:
-    def __init__(self, write_function):
+    def __init__(self, disks, write_function):
+        self.disks = disks
         self.write_function = write_function
 
         self.cad = pifacecad.PiFaceCAD()
@@ -54,6 +56,9 @@ class BakeryDisplay:
 
             self.write_function(self)
 
+            sleep(5)
+            self.refresh()
+
     def progress(self, percent):
         """Display the progress
 
@@ -87,8 +92,25 @@ class BakeryDisplay:
                 # Don't need to re-write character. Just change the bitmap.
                 self.cad.lcd.store_custom_bitmap(0, self.part_block[m])
 
+    def refresh(self):
+        """Refresh the screen for the menu"""
+        self.cad.lcd.clear()
+
+        # Image name
+        self.cad.lcd.write(self.slist.current())
+
+        # Device
+        self.cad.lcd.set_cursor(2, 1)
+        self.cad.lcd.write(basename(self.disks.watching[0]))
+
+        # _ = not present, block = present
+        self.cad.lcd.set_cursor(0, 1)
+        if self.disks.watching[0] in self.disks.devices:
+            self.cad.lcd.write_custom_bitmap(1)
+        else:
+            self.cad.lcd.write('_')
+
     def menu(self, slist):
-        self.cad.lcd.write(slist.current())
         # TODO Use this to have an exit button
         self.finish = 0
 
@@ -97,18 +119,34 @@ class BakeryDisplay:
 
         self.listener.activate()
 
+        if self.disks.watching[0] in self.disks.devices:
+            self.sd_state = 1
+        else:
+            self.sd_state = 0
+
+        self.refresh()
+
         while self.finish == 0:
-            pass
+            if self.sd_state == 0:
+                if self.disks.watching[0] in self.disks.devices:
+                    self.sd_state = 1
+                    self.cad.lcd.set_cursor(0, 1)
+                    self.cad.lcd.write_custom_bitmap(1)
+            else:
+                if self.disks.watching[0] not in self.disks.devices:
+                    self.sd_state = 0
+                    self.cad.lcd.set_cursor(0, 1)
+                    self.cad.lcd.write('_')
 
     def prev(self, event):
-        self.cad.lcd.clear()
+        self.cad.lcd.set_cursor(0, 0)
         self.cad.lcd.write(self.slist.prev())
 
     def next(self, event):
-        self.cad.lcd.clear()
+        self.cad.lcd.set_cursor(0, 0)
         self.cad.lcd.write(self.slist.next())
 
     def select(self, event):
         self.slist.select()
-        self.cad.lcd.clear()
+        self.cad.lcd.set_cursor(0, 0)
         self.cad.lcd.write(self.slist.current())
