@@ -53,11 +53,10 @@ them and gzip the image.
 
 ## To do list
 
-* Needs to be run with sudo. Can this be avoided?
-* No 'exit' button.
-* Does not start on boot.
+* Can it be run without sudo? Is this necessary?
+* Add an 'exit' button.
+* Start on boot.
 * It would be useful to mount and configure the image after installing.
-* It doesn't deal well with no image being selected.
 * Any files in /home/pi/images will be listed but only .img.gz files will work.
   It may be helpful to structure this in such a way that there can be other
   files, such as README files.
@@ -66,9 +65,13 @@ them and gzip the image.
 * Switching between images doesn't overwrite properly if the new name is
   shorter than the old.
 * Why does the image selector look like '[ ]' while the device indicator is a
-  single character?
+  single character? Decide on one or the other!
 * If an image is not selected or a disk is not present it shouldn't print
   'Completed 0.00%' before printing the error message.
-* Device to use is hardwired to /dev/sda.
+* Currently the device to use is hardwired to /dev/sda. I don't know if this
+  is sensible.
 * The 'no SD card' mark is a '_' character, which isn't quite the bottom line.
   Make a new bitmap for the bottom line to look better with the block.
+* No easy way to copy new images on when not connected to a network. Need to
+  have a feature to use external USB storage, either writing images directly
+  from one or copying them onto the Pi.
