@@ -6,8 +6,8 @@
  
 ### BEGIN INIT INFO
 # Provides:          bakery
-# Required-Start:
-# Required-Stop:
+# Required-Start:    lirc
+# Required-Stop:     lirc
 # Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6
 # Short-Description: Use a Pi to make a Pi
