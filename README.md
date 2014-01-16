@@ -23,6 +23,22 @@ Did you read WARNING 1? If not, go back and read it again.
 ### Hardware
 
 * PiFace Control and Display
+* USB to SD adapter
+
+### Set up
+
+Extract Bakery into:
+
+    /home/pi/Bakery
+
+Either start Bakery manually, as shown in the 'Operation' section below, or
+set it to start on boot by copying the file:
+
+    /home/pi/Bakery/init.d/bakery
+
+to `/etc/init.d`, making sure that it is executable, and running:
+
+    sudo update-rc.d bakery defaults
 
 ## Operation
 
@@ -55,7 +71,6 @@ them and gzip the image.
 
 * Can it be run without sudo? Is this necessary?
 * Add an 'exit' button.
-* Start on boot.
 * It would be useful to mount and configure the image after installing.
 * Any files in /home/pi/images will be listed but only .img.gz files will work.
   It may be helpful to structure this in such a way that there can be other
