@@ -2,6 +2,8 @@
 # (Thanks, guys)
 import multiprocessing
 import threading
+import pyudev
+import sys
 from time import sleep
 from subprocess import call
 
@@ -23,7 +25,15 @@ class DiskEventListener(object):
     def __init__(self):
         self.function_maps = list()
         self.queue = multiprocessing.Queue()
-        self.watching = [ '/dev/sda' ]
+
+        # Get list of mounted devices
+        self.context = pyudev.Context()
+        self.watching = []
+        for device in self.context.list_devices(subsystem='block', DEVTYPE='disk'):
+            major = device['MAJOR']
+            if major == '8' or major == '3':
+                self.watching.append(device.device_node)
+
         self.detector = multiprocessing.Process(
             target=watch_disk_events,
             args=(self.queue, self.watching))
@@ -53,7 +63,8 @@ class DiskEventListener(object):
 
     def add_device(self, event):
         if event.device in self.devices:
-            self.error(event.device + ' is already in the list!')
+            print(event.device + ' is already in the list!')
+            sys.exit(1)
         else:
             self.devices.append(event.device)
 
@@ -61,7 +72,8 @@ class DiskEventListener(object):
         if event.device in self.devices:
             self.devices.remove(event.device)
         else:
-            self.error(event.device + ' is not in the list!')
+            print(event.device + ' is not in the list!')
+            sys.exit(1)
 
 class DiskEvent(object):
     """A disk event"""
@@ -83,14 +95,13 @@ def watch_disk_events(queue, watching):
     function uses fdisk to check if a card has been inserted.
 
     """
-    on = 0
+    on = [0]*len(watching)
     actions = [ 'remove', 'add' ]
     while True:
-        # TODO Fix the hard-wired path
-        for dev in watching:
-            if on != call(["/home/pi/Bakery/probe.sh", dev]):
-                on = 1 - on
-                queue.put(DiskEvent(actions[on], dev))
+        for i in range(len(watching)):
+            if on[i] != call(["/home/pi/Bakery/probe.sh", watching[i]]):
+                on[i] = 1 - on[i]
+                queue.put(DiskEvent(actions[on[i]], watching[i]))
         sleep(1)
 
 def handle_events(queue, event_matches_function_map,

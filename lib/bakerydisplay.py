@@ -3,9 +3,24 @@ from os.path import basename
 from time import sleep, time
 
 class BakeryDisplay:
-    def __init__(self, disks, write_function):
-        self.disks = disks
+
+    # Only use up to two devices
+    # Without a USB hub, there cannot be any more on a Raspberry Pi
+    MAX_DEVICES=2
+
+    def __init__(self, disks, slist, write_function):
+        # Callback function for writing to the device
         self.write_function = write_function
+
+        # List of images available
+        self.slist = slist
+
+        # Watcher for disks & devices
+        self.disks = disks
+        # Number of devices present
+        self.n_devices = 0
+        # Send updates to display of devices
+        self.updates = False
 
         self.cad = pifacecad.PiFaceCAD()
         self.cad.lcd.backlight_on()
@@ -24,6 +39,9 @@ class BakeryDisplay:
             n = n + (2**i)
             self.part_block.append( pifacecad.LCDBitmap([n]*8) )
         self.cad.lcd.store_custom_bitmap(1, self.part_block[4])
+
+    def __del__(self):
+        self.cad.lcd.backlight_off()
 
     def pressed(self, event):
         """Button has been pressed
@@ -54,10 +72,12 @@ class BakeryDisplay:
             self.cad.lcd.set_cursor(0, 1)
             self.cad.lcd.write_custom_bitmap(0)
 
+            self.updates = False
             self.write_function(self)
 
             sleep(5)
             self.refresh()
+            self.updates = True
 
     def progress(self, percent):
         """Display the progress
@@ -100,43 +120,55 @@ class BakeryDisplay:
         self.cad.lcd.write(self.slist.current())
 
         # Device
-        self.cad.lcd.set_cursor(2, 1)
-        self.cad.lcd.write(basename(self.disks.watching[0]))
+        self.devices_line(True)
 
-        # _ = not present, block = present
-        self.cad.lcd.set_cursor(0, 1)
-        if self.disks.watching[0] in self.disks.devices:
-            self.cad.lcd.write_custom_bitmap(1)
+    def devices_line(self, rewrite=False):
+        """Display the devices line on the LCD"""
+        if rewrite or self.n_devices != len(self.disks.watching):
+            # Number of devices has changed
+            self.n_devices = len(self.disks.watching)
+            self.device_state = []
+            # Not expecting more than two. Ignore any more
+            # Write present drives
+            for present in range(min(self.n_devices, self.MAX_DEVICES)):
+                self.cad.lcd.set_cursor(present*8, 1)
+                if self.disks.watching[present] in self.disks.devices:
+                    self.cad.lcd.write_custom_bitmap(1)
+                    self.device_state.append(1)
+                else:
+                    self.cad.lcd.write('_')
+                    self.device_state.append(0)
+                self.cad.lcd.write(' {0: <6}'.format(basename(self.disks.watching[present])))
+
+            # Blank out missing drives
+            for absent in range(min(self.n_devices, self.MAX_DEVICES), self.MAX_DEVICES):
+                self.cad.lcd.set_cursor(absent*8, 1)
+                self.cad.lcd.write(' '*8)
         else:
-            self.cad.lcd.write('_')
+            for present in range(min(self.n_devices, self.MAX_DEVICES)):
+                if self.device_state[present] == 0:
+                    if self.disks.watching[present] in self.disks.devices:
+                        self.device_state[present] = 1
+                        self.cad.lcd.set_cursor(present*8, 1)
+                        self.cad.lcd.write_custom_bitmap(1)
+                else:
+                    if self.disks.watching[present] not in self.disks.devices:
+                        self.device_state[present] = 0
+                        self.cad.lcd.set_cursor(present*8, 1)
+                        self.cad.lcd.write('_')
 
-    def menu(self, slist):
+    def menu(self):
         # TODO Use this to have an exit button
         self.finish = 0
 
-        # TODO Can this be passed as an arguement to the listener functions?
-        self.slist = slist
-
         self.listener.activate()
 
-        if self.disks.watching[0] in self.disks.devices:
-            self.sd_state = 1
-        else:
-            self.sd_state = 0
-
         self.refresh()
+        self.updates = True
 
         while self.finish == 0:
-            if self.sd_state == 0:
-                if self.disks.watching[0] in self.disks.devices:
-                    self.sd_state = 1
-                    self.cad.lcd.set_cursor(0, 1)
-                    self.cad.lcd.write_custom_bitmap(1)
-            else:
-                if self.disks.watching[0] not in self.disks.devices:
-                    self.sd_state = 0
-                    self.cad.lcd.set_cursor(0, 1)
-                    self.cad.lcd.write('_')
+            if self.updates:
+                self.devices_line()
 
     def prev(self, event):
         self.cad.lcd.set_cursor(0, 0)

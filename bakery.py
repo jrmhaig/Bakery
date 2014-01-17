@@ -56,6 +56,6 @@ def write_image(display):
     display.progress(-1)
     print("And finished")
 
-display = BakeryDisplay(disks, write_image)
+display = BakeryDisplay(disks, images, write_image)
 
-display.menu(images)
+display.menu()
