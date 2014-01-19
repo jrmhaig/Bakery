@@ -40,6 +40,14 @@ to `/etc/init.d`, making sure that it is executable, and running:
 
     sudo update-rc.d bakery defaults
 
+## Configuration
+
+Bakery looks for a configuration file called `bakery.cfg` either in the
+current directory or in `/etc`. This should contain:
+
+    [images]
+    source=/path/to/imagess/directory
+
 ## Operation
 
 Run with:
@@ -83,12 +91,9 @@ them and gzip the image.
   single character? Decide on one or the other!
 * If an image is not selected or a disk is not present it shouldn't print
   'Completed 0.00%' before printing the error message.
-* The list of devices is now scanned when Bakery starts up. The first disk,
-  the one attached to the upper USB port, is still used for writing. Currently,
-  devices that are added later are not detected. These should be detected and
-  the display updated as appropriate. Then, it should be possible to mount a
-  new device and find new disk images to use, so as to provide external
-  storage and a way to copy new images on to the Pi.
+* Devices are now detected when they are plugged in and removed. The main SD
+  writer needs to be identfied, by vendor and model ids, so that another device
+  does not accidentally get written to.
 * The 'no SD card' mark is a '_' character, which isn't quite the bottom line.
   Make a new bitmap for the bottom line to look better with the block.
 * No easy way to copy new images on when not connected to a network. Need to
@@ -96,3 +101,9 @@ them and gzip the image.
   from one or copying them onto the Pi.
 * When a disk is being written, the disk detector could clean up if the SD
   card is removed. At the moment it just gets messed up.
+* The init script doesn't appear to be shutting bakery down properly. Two
+  python processes are left running. I think bakery.py needs to catch and
+  handle the interrupt.
+* Occasionally, the display gets messed up when two different processes try to
+  write at the same time. Perhaps there should be just one process receiving
+  messages from the others and updating it.

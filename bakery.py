@@ -3,13 +3,23 @@
 import subprocess
 import signal
 import re
+import configparser
 from lib.bakerydisplay import *
 from lib.selectlist import *
 from lib.diskdetector import *
 from time import sleep
 from struct import unpack
 
-images = disk_image_list('/home/pi/images')
+config_files = [
+                '/etc/bakery.cfg',
+                'conf/bakery.cfg'
+               ]
+
+config = configparser.ConfigParser()
+config.read( config_files )
+dirs = config.get('images', 'source')
+
+images = disk_image_list(dirs)
 
 disks = DiskEventListener()
 disks.activate()
@@ -19,7 +29,7 @@ def write_image(display):
         display.cad.lcd.clear()
         display.cad.lcd.write('No SD card')
         return 0
-    device = disks.devices[0]
+    device = disks.device_name(0)
 
     image = images.current_full_path()
     if image == None:

@@ -26,7 +26,6 @@ class SelectListTests(unittest.TestCase):
                 pass
 
     def test_create_with_one_dir(self):
-        #sdi = SelectList(self.ds[0])
         sdi = disk_image_list(self.ds[0])
         self.assertEqual(len(sdi),3)
         self.assertEqual(sdi[0].name,'01-image1.img')
@@ -37,7 +36,6 @@ class SelectListTests(unittest.TestCase):
         self.assertEqual(sdi[2].directory,'/tmp/bakery_tests_1')
 
     def test_create_with_two_dirs(self):
-        #sdi = SelectList(*self.ds)
         sdi = disk_image_list(*self.ds)
         self.assertEqual(len(sdi),5)
         self.assertEqual(sdi[0].name,'01-image1.img')
@@ -52,12 +50,10 @@ class SelectListTests(unittest.TestCase):
         self.assertEqual(sdi[4].directory,'/tmp/bakery_tests_1')
 
     def test_get_first_image(self):
-        #sdi = SelectList(*self.ds)
         sdi = disk_image_list(*self.ds)
         self.assertEqual(sdi.current(), '[ ] 01-image1.img')
 
     def test_get_next_image(self):
-        #sdi = SelectList(*self.ds)
         sdi = disk_image_list(*self.ds)
         self.assertEqual(sdi.next(), '[ ] 02-image2.img')
         self.assertEqual(sdi.current(), '[ ] 02-image2.img')
@@ -71,7 +67,6 @@ class SelectListTests(unittest.TestCase):
         self.assertEqual(sdi.current(), '[ ] 01-image1.img')
 
     def test_get_prev_image(self):
-        #sdi = SelectList(*self.ds)
         sdi = disk_image_list(*self.ds)
         self.assertEqual(sdi.prev(), '[ ] 05-image5.img')
         self.assertEqual(sdi.current(), '[ ] 05-image5.img')
@@ -83,6 +78,3 @@ class SelectListTests(unittest.TestCase):
         self.assertEqual(sdi.current(), '[ ] 02-image2.img')
         self.assertEqual(sdi.prev(), '[ ] 01-image1.img')
         self.assertEqual(sdi.current(), '[ ] 01-image1.img')
-
-if __name__ == '__main__':
-    unittest.main()

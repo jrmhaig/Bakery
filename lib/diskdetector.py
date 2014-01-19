@@ -28,15 +28,16 @@ class DiskEventListener(object):
 
         # Get list of mounted devices
         self.context = pyudev.Context()
-        self.watching = []
+        self.devices = []
         for device in self.context.list_devices(subsystem='block', DEVTYPE='disk'):
             major = device['MAJOR']
             if major == '8' or major == '3':
-                self.watching.append(device.device_node)
+                self.devices.append(device.device_node)
 
-        self.detector = multiprocessing.Process(
-            target=watch_disk_events,
-            args=(self.queue, self.watching))
+        self.set_disk_detector()
+        self.device_detector = multiprocessing.Process(
+            target=watch_device_events,
+            args=(self.queue, self.context, self.devices))
         self.dispatcher = threading.Thread(
             target=handle_events,
             args=(
@@ -44,22 +45,51 @@ class DiskEventListener(object):
                 event_matches_function_map,
                 self.function_maps,
                 DiskEventListener.TERMINATE_SIGNAL))
-        self.devices = []
-        self.register('add', self.add_device)
-        self.register('remove', self.remove_device)
+        self.disks = []
+        self.register('add_disk', self.add_disk)
+        self.register('remove_disk', self.remove_disk)
+        self.register('add_device', self.add_device)
+        self.register('remove_device', self.remove_device)
+
+    def set_disk_detector(self):
+        restart = 0
+        try:
+            self.disk_detector.terminate()
+            self.disk_detector.join()
+            restart = 1
+        except AttributeError:
+            pass
+
+        self.disk_detector = multiprocessing.Process(
+            target=watch_disk_events,
+            args=(self.queue, self.devices))
+
+        if restart:
+            self.disk_detector.start()
 
     def register(self, action, callback):
         self.function_maps.append( DiskFunctionMap (action, callback) )
 
     def activate(self):
-        self.detector.start()
+        self.disk_detector.start()
+        self.device_detector.start()
         self.dispatcher.start()
 
     def deactivate(self):
         self.queue.put(self.TERMINATE_SIGNAL)
         self.dispatcher.join()
-        self.detector.terminate()
-        self.detector.join()
+        self.disk_detector.terminate()
+        self.disk_detector.terminate()
+        self.disk_detector.join()
+        self.disk_detector.join()
+
+    def add_disk(self, event):
+        if event.device not in self.disks:
+            self.disks.append(event.device)
+
+    def remove_disk(self, event):
+        if event.device in self.disks:
+            self.disks.remove(event.device)
 
     def add_device(self, event):
         if event.device in self.devices:
@@ -67,16 +97,31 @@ class DiskEventListener(object):
             sys.exit(1)
         else:
             self.devices.append(event.device)
+            self.set_disk_detector()
 
     def remove_device(self, event):
         if event.device in self.devices:
             self.devices.remove(event.device)
+            try:
+                self.disks.remove(event.device)
+            except:
+                pass
+            self.set_disk_detector()
         else:
             print(event.device + ' is not in the list!')
             sys.exit(1)
 
-class DiskEvent(object):
-    """A disk event"""
+    def device_name(self, n):
+        try:
+            return self.devices[n]
+        except:
+            return None
+
+    def device_present(self, n):
+        return self.device_name(n) in self.disks
+
+class DeviceEvent(object):
+    """A device event"""
     def __init__(self, action, device):
         self.action = action
         self.device = device
@@ -88,20 +133,36 @@ class DiskEvent(object):
 
 ###########################################################################
 
-def watch_disk_events(queue, watching):
+def watch_device_events(queue, context, devices):
+    """Watch for new devices
+
+    Detect when a new USB device has been added. In the case of an SD card
+    reader, for example, this may appear even when an actual card is not
+    present. The function watch_disk_events will then check existing devices
+    for the actual disk.
+
+    """
+
+    monitor = pyudev.Monitor.from_netlink(context)
+    monitor.filter_by('block', 'disk')
+    for action, device in monitor:
+        if action == 'add' or action == 'remove':
+            queue.put(DeviceEvent(action + "_device", device.device_node))
+
+def watch_disk_events(queue, devices):
     """Watch for new disks
 
     A USB-SD adapter may appear in /dev even if there is no SD present. This
     function uses fdisk to check if a card has been inserted.
 
     """
-    on = [0]*len(watching)
-    actions = [ 'remove', 'add' ]
+    on = [0]*len(devices)
+    actions = [ 'remove_disk', 'add_disk' ]
     while True:
-        for i in range(len(watching)):
-            if on[i] != call(["/home/pi/Bakery/probe.sh", watching[i]]):
+        for i in range(len(devices)):
+            if on[i] != call(["/home/pi/Bakery/probe.sh", devices[i]]):
                 on[i] = 1 - on[i]
-                queue.put(DiskEvent(actions[on[i]], watching[i]))
+                queue.put(DeviceEvent(actions[on[i]], devices[i]))
         sleep(1)
 
 def handle_events(queue, event_matches_function_map,
@@ -109,6 +170,7 @@ def handle_events(queue, event_matches_function_map,
     """Handle events"""
     while True:
         event = queue.get()
+
         if event == terminate_signal:
             return
 
