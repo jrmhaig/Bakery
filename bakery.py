@@ -4,11 +4,13 @@ import subprocess
 import signal
 import re
 import configparser
+import struct
+import queue
+import threading
+from time import time
 from lib.bakerydisplay import *
 from lib.selectlist import *
 from lib.diskdetector import *
-from time import sleep
-from struct import unpack
 
 config_files = [
                 '/etc/bakery.cfg',
@@ -23,6 +25,11 @@ images = disk_image_list(dirs)
 
 disks = DiskEventListener()
 disks.activate()
+
+def read_pipe(out, queue):
+    for line in iter(out.readline, b''):
+        queue.put(str(line))
+    out.close()
 
 def write_image(display):
     if len(disks.devices) == 0:
@@ -42,26 +49,40 @@ def write_image(display):
     fl.seek(-4, 2)
     r = fl.read()
     fl.close()
-    size = unpack('<I', r)[0]
+    size = struct.unpack('<I', r)[0]
 
     print("Image:", str(image))
+
+    # Unzip process
     unzip = subprocess.Popen(['zcat', str(image)], stdout=subprocess.PIPE)
-    dd = subprocess.Popen(['dd', 'of=' + device, 'bs=1M'], stdin=unzip.stdout, stderr=subprocess.PIPE)
+
+    # DD process
+    # Output to a pipe to catch status updates
+    dd = subprocess.Popen(['dd', 'of=' + device, 'bs=1M'], bufsize=1, stdin=unzip.stdout, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    dd_queue = queue.Queue()
+    dd_thread = threading.Thread(target = read_pipe, args=(dd.stdout, dd_queue))
+    dd_thread.daemon = True
+    dd_thread.start()
+
     print("unzip PID:", unzip.pid)
     print("dd PID   :", dd.pid)
-    i = 0
-    dd.send_signal(signal.SIGUSR1)
+    probe_sleep = 20
+    next_probe = time()
     while unzip.poll() is None:
-        for line in dd.stderr:
+        if time() > next_probe:
+            dd.send_signal(signal.SIGUSR1)
+            next_probe = next_probe + probe_sleep
+
+        try:
+            line = dd_queue.get(timeout = 0.1)
             m = re.search(r"(\d+) bytes", str(line))
             if m != None:
                 percent = 100*int(m.group(1))/size
                 display.progress(percent)
                 print("Completed: " + str(percent) + "%")
-                break
-        i=i+1
-        sleep(3)
-        dd.send_signal(signal.SIGUSR1)
+                next_probe = time() + 1
+        except:
+            pass
 
     display.progress(-1)
     print("And finished")
