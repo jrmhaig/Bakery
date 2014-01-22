@@ -31,17 +31,24 @@ def read_pipe(out, queue):
         queue.put(str(line))
     out.close()
 
-def write_image(display):
-    if len(disks.devices) == 0:
-        display.cad.lcd.clear()
-        display.cad.lcd.write('No SD card')
+def write_image(write_queue):
+    if len(disks.disks) == 0:
+        write_queue.put( { 'action': 'clear' } )
+        write_queue.put( { 'action': 'write',
+                           'pos': [0, 0],
+                           'text': 'No SD card' } )
         return 0
     device = disks.device_name(0)
 
     image = images.current_full_path()
     if image == None:
-        display.cad.lcd.clear()
-        display.cad.lcd.write('No image selected')
+        write_queue.put( { 'action': 'clear' } )
+        write_queue.put( { 'action': 'write',
+                           'pos': [0, 0],
+                           'text': 'No image' } )
+        write_queue.put( { 'action': 'write',
+                           'pos': [0, 1],
+                           'text': 'selected' } )
         return 0
 
     # Uncompressed size of a gzip file is stored in the last 4 bytes

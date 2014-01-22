@@ -85,7 +85,7 @@ class BakeryDisplay:
                                     'bitmap': 0 } )
 
             self.updates = False
-            self.write_function(self)
+            self.write_function(self.write_queue)
 
             sleep(5)
             self.refresh()
