@@ -76,6 +76,16 @@ def write_image(write_queue):
     probe_sleep = 20
     next_probe = time()
     while unzip.poll() is None:
+        if dd.poll() is not None:
+            write_queue.put( { 'action': 'clear' } )
+            write_queue.put( { 'action': 'write',
+                               'pos': [0, 0],
+                               'text': 'Write failed' } )
+            write_queue.put( { 'action': 'write',
+                               'pos': [0, 1],
+                               'text': 'Try again' } )
+            unzip.kill()
+            return 0
         if time() > next_probe:
             dd.send_signal(signal.SIGUSR1)
             next_probe = next_probe + probe_sleep
