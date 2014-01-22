@@ -80,7 +80,7 @@ def write_image(display):
                 percent = 100*int(m.group(1))/size
                 display.progress(percent)
                 print("Completed: " + str(percent) + "%")
-                next_probe = time() + 1
+                next_probe = time() + 5
         except:
             pass
 

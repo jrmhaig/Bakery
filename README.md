@@ -94,8 +94,6 @@ them and gzip the image.
 * Devices are now detected when they are plugged in and removed. The main SD
   writer needs to be identfied, by vendor and model ids, so that another device
   does not accidentally get written to.
-* The 'no SD card' mark is a '_' character, which isn't quite the bottom line.
-  Make a new bitmap for the bottom line to look better with the block.
 * No easy way to copy new images on when not connected to a network. Need to
   have a feature to use external USB storage, either writing images directly
   from one or copying them onto the Pi.
@@ -104,6 +102,3 @@ them and gzip the image.
 * The init script doesn't appear to be shutting bakery down properly. Two
   python processes are left running. I think bakery.py needs to catch and
   handle the interrupt.
-* Occasionally, the display gets messed up when two different processes try to
-  write at the same time. Perhaps there should be just one process receiving
-  messages from the others and updating it.

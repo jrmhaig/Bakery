@@ -1,4 +1,6 @@
 import pifacecad
+import multiprocessing
+import threading
 from os.path import basename
 from time import sleep, time
 
@@ -6,7 +8,7 @@ class BakeryDisplay:
 
     # Only use up to two devices
     # Without a USB hub, there cannot be any more on a Raspberry Pi
-    MAX_DEVICES=2
+    MAX_DEVICES = 2
 
     def __init__(self, disks, slist, write_function):
         # Callback function for writing to the device
@@ -24,9 +26,6 @@ class BakeryDisplay:
         self.updates = False
 
         self.cad = pifacecad.PiFaceCAD()
-        self.cad.lcd.backlight_on()
-        self.cad.lcd.cursor_off()
-        self.cad.lcd.blink_off()
         self.listener = pifacecad.SwitchEventListener(chip=self.cad)
         self.listener.register(4, pifacecad.IODIR_FALLING_EDGE, self.pressed)
         self.listener.register(4, pifacecad.IODIR_RISING_EDGE, self.released)
@@ -34,12 +33,20 @@ class BakeryDisplay:
         self.listener.register(6, pifacecad.IODIR_FALLING_EDGE, self.prev)
         self.listener.register(7, pifacecad.IODIR_FALLING_EDGE, self.next)
 
+        self.write_queue = multiprocessing.Queue()
+        self.writer = threading.Thread( target = _lcd_writer,
+                                        args = ( self.write_queue, ) )
+
+        self.writer.start()
+
         self.part_block = []
         n = 0
         for i in range(4,-1,-1):
             n = n + (2**i)
-            self.part_block.append( pifacecad.LCDBitmap([n]*8) )
-        self.cad.lcd.store_custom_bitmap(1, self.part_block[4])
+            self.part_block.append( [n] * 8 )
+        self.write_queue.put( { 'action': 'store',
+                                'bitmap': 1,
+                                'lines': self.part_block[4] } )
 
     def __del__(self):
         self.cad.lcd.backlight_off()
@@ -61,17 +68,21 @@ class BakeryDisplay:
 
         """
         if time() > self.press_time + 5:
-            self.cad.lcd.clear()
+            self.write_queue.put( { 'action': 'clear' } )
 
             # Top line
-            self.cad.lcd.set_cursor(0, 0)
-            self.cad.lcd.write("Complete:  0.00%")
+            self.write_queue.put( { 'action': 'write',
+                                    'pos': [0,0],
+                                    'text': 'Complete:  0.00%' } )
 
             # Second line
             self.progress_pointer=0
-            self.cad.lcd.store_custom_bitmap(0, self.part_block[0])
-            self.cad.lcd.set_cursor(0, 1)
-            self.cad.lcd.write_custom_bitmap(0)
+            self.write_queue.put( { 'action': 'store',
+                                    'bitmap': 0,
+                                    'lines': self.part_block[0] } )
+            self.write_queue.put( { 'action': 'bitmap',
+                                    'pos': [0,1],
+                                    'bitmap': 0 } )
 
             self.updates = False
             self.write_function(self)
@@ -88,12 +99,14 @@ class BakeryDisplay:
 
         """
         if percent == -1:
-            self.cad.lcd.clear()
-            self.cad.lcd.set_cursor(0, 0)
-            self.cad.lcd.write("    FINISHED    ")
+            self.write_queue.put( { 'action': 'clear' } )
+            self.write_queue.put( { 'action': 'write',
+                                    'pos': [0,0],
+                                    'text': '    FINISHED    ' } )
         else:
-            self.cad.lcd.set_cursor(10, 0)
-            self.cad.lcd.write("{0:5.2f}".format(percent))
+            self.write_queue.put( { 'action': 'write',
+                                    'pos': [10,0],
+                                    'text': '{0:5.2f}'.format(percent) } )
             k = percent / 6.125   #    percent * 16 / 100
             l = int(k)            #    Number of complete blocks
             m = int((k - l) * 5)  #    Number of lines in partial block
@@ -102,23 +115,31 @@ class BakeryDisplay:
             # Writing a character is slow - avoid if possible
             if self.progress_pointer < l:
                 while self.progress_pointer < l:
-                    self.cad.lcd.set_cursor(self.progress_pointer, 1)
-                    self.cad.lcd.write_custom_bitmap(1)
+                    self.write_queue.put( { 'action': 'bitmap',
+                                            'pos': [self.progress_pointer,1],
+                                            'bitmap': 1 } )
                     self.progress_pointer = self.progress_pointer + 1
 
-                self.cad.lcd.set_cursor(self.progress_pointer, 1)
-                self.cad.lcd.store_custom_bitmap(0, self.part_block[m])
-                self.cad.lcd.write_custom_bitmap(0)
+                self.write_queue.put( { 'action': 'store',
+                                        'bitmap': 0,
+                                        'lines': self.part_block[m] } )
+                self.write_queue.put( { 'action': 'bitmap',
+                                        'pos': [self.progress_pointer,1],
+                                        'bitmap': 0 } )
             else:
                 # Don't need to re-write character. Just change the bitmap.
-                self.cad.lcd.store_custom_bitmap(0, self.part_block[m])
+                self.write_queue.put( { 'action': 'store',
+                                        'bitmap': 0,
+                                        'lines': self.part_block[m] } )
 
     def refresh(self):
         """Refresh the screen for the menu"""
-        self.cad.lcd.clear()
+        self.write_queue.put( { 'action': 'clear' } )
 
         # Image name
-        self.cad.lcd.write(self.slist.current())
+        self.write_queue.put( { 'action': 'write',
+                                'pos': [0,0],
+                                'text': '{0}'.format(self.slist.current()) } )
 
         # Device
         self.devices_line(True)
@@ -131,27 +152,36 @@ class BakeryDisplay:
             self.device_state = [0]*self.MAX_DEVICES
             for dev in range(self.MAX_DEVICES):
                 name = self.disks.device_name(dev)
-                self.cad.lcd.set_cursor(dev*8, 1)
                 if name == None:
                     # No device
-                    self.cad.lcd.write(' '*8)
+                    self.write_queue.put( { 'action': 'write',
+                                            'pos': [dev*8,1],
+                                            'text': ' '*8 } )
                 else:
                     if self.disks.device_present(dev):
-                        self.cad.lcd.write_custom_bitmap(1)
+                        self.write_queue.put( { 'action': 'bitmap',
+                                                'pos': [dev*8,1],
+                                                'bitmap': 1 } )
                     else:
-                        self.cad.lcd.write(' ')
-                    self.cad.lcd.write(' {0: <6}'.format(basename(name)))
+                        self.write_queue.put( { 'action': 'write',
+                                                'pos': [dev*8,1],
+                                                'text': ' ' } )
+                    self.write_queue.put( { 'action': 'write',
+                                            'pos': [dev*8+1,1],
+                                            'text': '{0: <6}'.format(basename(name)) } )
         else:
             for dev in range(self.MAX_DEVICES):
                 if self.disks.device_present(dev):
                     if self.device_state[dev] == 0:
-                        self.cad.lcd.set_cursor(dev*8, 1)
-                        self.cad.lcd.write_custom_bitmap(1)
+                        self.write_queue.put( { 'action': 'bitmap',
+                                                'pos': [dev*8,1],
+                                                'bitmap': 1 } )
                         self.device_state[dev] = 1
                 else:
                     if self.device_state[dev] == 1:
-                        self.cad.lcd.set_cursor(dev*8, 1)
-                        self.cad.lcd.write(' ')
+                        self.write_queue.put( { 'action': 'write',
+                                                'pos': [dev*8,1],
+                                                'text': ' ' } )
                         self.device_state[dev] = 0
 
     def menu(self):
@@ -169,14 +199,44 @@ class BakeryDisplay:
                 sleep(0.5)
 
     def prev(self, event):
-        self.cad.lcd.set_cursor(0, 0)
-        self.cad.lcd.write(self.slist.prev())
+        self.write_queue.put( { 'action': 'write',
+                                'pos': [0,0],
+                                'text': self.slist.prev() } )
 
     def next(self, event):
-        self.cad.lcd.set_cursor(0, 0)
-        self.cad.lcd.write(self.slist.next())
+        self.write_queue.put( { 'action': 'write',
+                                'pos': [0,0],
+                                'text': self.slist.next() } )
 
     def select(self, event):
         self.slist.select()
-        self.cad.lcd.set_cursor(0, 0)
-        self.cad.lcd.write(self.slist.current())
+        self.write_queue.put( { 'action': 'write',
+                                'pos': [0,0],
+                                'text': self.slist.current() } )
+
+def _lcd_writer(queue):
+    """Write to the LCD
+
+    This function is run as a background thread with a queue to avoid
+    conflicting display updates.
+
+    """
+    cad = pifacecad.PiFaceCAD()
+    cad.lcd.backlight_on()
+    cad.lcd.cursor_off()
+    cad.lcd.blink_off()
+
+    while True:
+        message = queue.get()
+        if message['action'] == 'finish':
+            return
+        elif message['action'] == 'write':
+            cad.lcd.set_cursor(message['pos'][0], message['pos'][1])
+            cad.lcd.write(message['text'])
+        elif message['action'] == 'store':
+            cad.lcd.store_custom_bitmap(message['bitmap'], message['lines'])
+        elif message['action'] == 'bitmap':
+            cad.lcd.set_cursor(message['pos'][0], message['pos'][1])
+            cad.lcd.write_custom_bitmap( message['bitmap'] )
+        elif message['action'] == 'clear':
+            cad.lcd.clear()
