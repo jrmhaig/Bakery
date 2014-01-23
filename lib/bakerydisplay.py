@@ -3,7 +3,6 @@ import multiprocessing
 import threading
 import time
 import os.path
-#from os.path import basename
 
 class BakeryDisplay:
 
@@ -64,12 +63,27 @@ class BakeryDisplay:
         pressed for five seconds.
 
         """
-        self.press_start = time.time()
-        self.is_pressed = True
-        self.countdown = self.PRESS_TIME
-        self.write_queue.put( { 'action': 'write',
-                                'pos': [0, 0],
-                                'text': 'Write in {0} secs '.format(self.PRESS_TIME) } )
+        if len(self.disks.disks) == 0:
+            self.write_queue.put( { 'action': 'write',
+                                    'pos': [0, 0],
+                                    'text': 'No disk present ' } )
+            self.press_start = -1
+        elif self.slist.current_full_path() == None:
+            self.write_queue.put( { 'action': 'clear' } )
+            self.write_queue.put( { 'action': 'write',
+                                    'pos': [0, 0],
+                                    'text': 'No image' } )
+            self.write_queue.put( { 'action': 'write',
+                                    'pos': [0, 1],
+                                    'text': 'selected' } )
+            self.press_start = -1
+        else:
+            self.press_start = time.time()
+            self.is_pressed = True
+            self.countdown = self.PRESS_TIME
+            self.write_queue.put( { 'action': 'write',
+                                    'pos': [0, 0],
+                                    'text': 'Write in {0} secs '.format(self.PRESS_TIME) } )
 
     def released(self, event):
         """Button has been released
@@ -79,7 +93,7 @@ class BakeryDisplay:
 
         """
         self.is_pressed = False
-        if time.time() > self.press_start + self.PRESS_TIME:
+        if self.press_start > 0 and time.time() > self.press_start + self.PRESS_TIME:
             self.write_queue.put( { 'action': 'clear' } )
 
             # Top line
@@ -97,7 +111,16 @@ class BakeryDisplay:
                                     'bitmap': 0 } )
 
             self.updates = False
-            self.write_function(self.write_queue)
+            #self.write_function(self.write_queue)
+            if not self.write_function( self.disks.device_name(0),
+                                        self.slist.current_full_path() ):
+                self.write_queue.put( { 'action': 'clear' } )
+                self.write_queue.put( { 'action': 'write',
+                                        'pos': [0, 0],
+                                        'text': 'Write failed' } )
+                self.write_queue.put( { 'action': 'write',
+                                        'pos': [0, 1],
+                                        'text': 'Try again' } )
 
             time.sleep(5)
             self.refresh()
@@ -209,7 +232,8 @@ class BakeryDisplay:
 
         while self.finish == 0:
             if self.is_pressed:
-                if (self.countdown > 0 and
+                if (self.press_start > 0 and
+                    self.countdown > 0 and
                     int(time.time() - self.press_start) > self.PRESS_TIME - self.countdown):
                     self.countdown = self.countdown - 1
                     self.write_queue.put( { 'action': 'write',

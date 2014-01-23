@@ -89,8 +89,6 @@ them and gzip the image.
   shorter than the old.
 * Why does the image selector look like '[ ]' while the device indicator is a
   single character? Decide on one or the other!
-* If an image is not selected or a disk is not present it shouldn't print
-  'Completed 0.00%' before printing the error message.
 * Devices are now detected when they are plugged in and removed. The main SD
   writer needs to be identfied, by vendor and model ids, so that another device
   does not accidentally get written to.

@@ -31,26 +31,7 @@ def read_pipe(out, queue):
         queue.put(str(line))
     out.close()
 
-def write_image(write_queue):
-    if len(disks.disks) == 0:
-        write_queue.put( { 'action': 'clear' } )
-        write_queue.put( { 'action': 'write',
-                           'pos': [0, 0],
-                           'text': 'No SD card' } )
-        return 0
-    device = disks.device_name(0)
-
-    image = images.current_full_path()
-    if image == None:
-        write_queue.put( { 'action': 'clear' } )
-        write_queue.put( { 'action': 'write',
-                           'pos': [0, 0],
-                           'text': 'No image' } )
-        write_queue.put( { 'action': 'write',
-                           'pos': [0, 1],
-                           'text': 'selected' } )
-        return 0
-
+def write_image(device, image):
     # Uncompressed size of a gzip file is stored in the last 4 bytes
     fl = open(str(image), 'rb')
     fl.seek(-4, 2)
@@ -77,15 +58,8 @@ def write_image(write_queue):
     next_probe = time.time()
     while unzip.poll() is None:
         if dd.poll() is not None:
-            write_queue.put( { 'action': 'clear' } )
-            write_queue.put( { 'action': 'write',
-                               'pos': [0, 0],
-                               'text': 'Write failed' } )
-            write_queue.put( { 'action': 'write',
-                               'pos': [0, 1],
-                               'text': 'Try again' } )
             unzip.kill()
-            return 0
+            return False
         if time.time() > next_probe:
             dd.send_signal(signal.SIGUSR1)
             next_probe = next_probe + probe_sleep
@@ -103,6 +77,7 @@ def write_image(write_queue):
 
     display.progress(-1)
     print("And finished")
+    return True
 
 display = BakeryDisplay(disks, images, write_image)
 
