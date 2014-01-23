@@ -4,7 +4,7 @@ import multiprocessing
 import threading
 import pyudev
 import sys
-from time import sleep
+import time
 from subprocess import call
 
 class DiskFunctionMap(object):
@@ -163,7 +163,7 @@ def watch_disk_events(queue, devices):
             if on[i] != call(["/home/pi/Bakery/probe.sh", devices[i]]):
                 on[i] = 1 - on[i]
                 queue.put(DeviceEvent(actions[on[i]], devices[i]))
-        sleep(1)
+        time.sleep(1)
 
 def handle_events(queue, event_matches_function_map,
                        function_maps, terminate_signal):

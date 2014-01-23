@@ -1,14 +1,18 @@
 import pifacecad
 import multiprocessing
 import threading
-from os.path import basename
-from time import sleep, time
+import time
+import os.path
+#from os.path import basename
 
 class BakeryDisplay:
 
     # Only use up to two devices
     # Without a USB hub, there cannot be any more on a Raspberry Pi
     MAX_DEVICES = 2
+
+    # Number of seconds to require the button is pressed for
+    PRESS_TIME = 5
 
     def __init__(self, disks, slist, write_function):
         # Callback function for writing to the device
@@ -24,6 +28,8 @@ class BakeryDisplay:
         self.device_state = [0]*self.MAX_DEVICES
         # Send updates to display of devices
         self.updates = False
+        # Whether button is pressed or not
+        self.is_pressed = False
 
         self.cad = pifacecad.PiFaceCAD()
         self.listener = pifacecad.SwitchEventListener(chip=self.cad)
@@ -58,7 +64,12 @@ class BakeryDisplay:
         pressed for five seconds.
 
         """
-        self.press_time = time()
+        self.press_start = time.time()
+        self.is_pressed = True
+        self.countdown = self.PRESS_TIME
+        self.write_queue.put( { 'action': 'write',
+                                'pos': [0, 0],
+                                'text': 'Write in {0} secs '.format(self.PRESS_TIME) } )
 
     def released(self, event):
         """Button has been released
@@ -67,7 +78,8 @@ class BakeryDisplay:
         five seconds. Otherwise, do nothing.
 
         """
-        if time() > self.press_time + 5:
+        self.is_pressed = False
+        if time.time() > self.press_start + self.PRESS_TIME:
             self.write_queue.put( { 'action': 'clear' } )
 
             # Top line
@@ -87,9 +99,11 @@ class BakeryDisplay:
             self.updates = False
             self.write_function(self.write_queue)
 
-            sleep(5)
+            time.sleep(5)
             self.refresh()
             self.updates = True
+        else:
+            self.refresh()
 
     def progress(self, percent):
         """Display the progress
@@ -168,7 +182,7 @@ class BakeryDisplay:
                                                 'text': ' ' } )
                     self.write_queue.put( { 'action': 'write',
                                             'pos': [dev*8+1,1],
-                                            'text': '{0: <6}'.format(basename(name)) } )
+                                            'text': '{0: <6}'.format(os.path.basename(name)) } )
         else:
             for dev in range(self.MAX_DEVICES):
                 if self.disks.device_present(dev):
@@ -194,9 +208,17 @@ class BakeryDisplay:
         self.updates = True
 
         while self.finish == 0:
+            if self.is_pressed:
+                if (self.countdown > 0 and
+                    int(time.time() - self.press_start) > self.PRESS_TIME - self.countdown):
+                    self.countdown = self.countdown - 1
+                    self.write_queue.put( { 'action': 'write',
+                                            'pos': [9, 0],
+                                            'text': str(self.countdown) } )
+
             if self.updates:
                 self.devices_line()
-                sleep(0.5)
+                time.sleep(0.5)
 
     def prev(self, event):
         self.write_queue.put( { 'action': 'write',

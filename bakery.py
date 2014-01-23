@@ -7,7 +7,7 @@ import configparser
 import struct
 import queue
 import threading
-from time import time
+import time
 from lib.bakerydisplay import *
 from lib.selectlist import *
 from lib.diskdetector import *
@@ -74,7 +74,7 @@ def write_image(write_queue):
     print("unzip PID:", unzip.pid)
     print("dd PID   :", dd.pid)
     probe_sleep = 20
-    next_probe = time()
+    next_probe = time.time()
     while unzip.poll() is None:
         if dd.poll() is not None:
             write_queue.put( { 'action': 'clear' } )
@@ -86,7 +86,7 @@ def write_image(write_queue):
                                'text': 'Try again' } )
             unzip.kill()
             return 0
-        if time() > next_probe:
+        if time.time() > next_probe:
             dd.send_signal(signal.SIGUSR1)
             next_probe = next_probe + probe_sleep
 
@@ -97,7 +97,7 @@ def write_image(write_queue):
                 percent = 100*int(m.group(1))/size
                 display.progress(percent)
                 print("Completed: " + str(percent) + "%")
-                next_probe = time() + 5
+                next_probe = time.time() + 5
         except:
             pass
 
