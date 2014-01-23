@@ -107,7 +107,7 @@ class BakeryDisplay:
             self.write_queue.put( { 'action': 'write',
                                     'pos': [10,0],
                                     'text': '{0:5.2f}'.format(percent) } )
-            k = percent / 6.125   #    percent * 16 / 100
+            k = percent / 6.25    #    percent * 16 / 100
             l = int(k)            #    Number of complete blocks
             m = int((k - l) * 5)  #    Number of lines in partial block
 
