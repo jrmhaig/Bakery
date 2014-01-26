@@ -13,6 +13,14 @@ class BakeryDisplay:
     # Number of seconds to require the button is pressed for
     PRESS_TIME = 5
 
+    # Bitmap IDs
+    # First 5 bitmaps for the blocks for the progress bar
+    BLOCK = range(5)
+    FULL_BLOCK = 4
+    # Unselected and selected indicator icons
+    UNSELECTED = 5
+    SELECTED = 6
+
     def __init__(self, disks, slist, write_function):
         # Callback function for writing to the device
         self.write_function = write_function
@@ -44,14 +52,45 @@ class BakeryDisplay:
 
         self.writer.start()
 
-        self.part_block = []
+        # Store bitmaps for the partial blocks that make up the progree bar.
+        # Each one contains 8 lines of the same number:
+        #   BLOCK[0]  '#    ' = 16
+        #   BLOCK[1]  '##   ' = 24
+        #   BLOCK[2]  '###  ' = 28
+        #   BLOCK[3]  '#### ' = 30
+        #   BLOCK[4]  '#####' = 31 
         n = 0
-        for i in range(4,-1,-1):
-            n = n + (2**i)
-            self.part_block.append( [n] * 8 )
+        for j in range(5):
+            n = n + ( 2 ** ( 4 - j ) )
+            self.write_queue.put( { 'action': 'store',
+                                    'bitmap': self.BLOCK[j],
+                                    'lines': [n]*8 } )
+
         self.write_queue.put( { 'action': 'store',
-                                'bitmap': 1,
-                                'lines': self.part_block[4] } )
+                                'bitmap': self.UNSELECTED,
+                                'lines': [
+                                           31,   #   #####
+                                           17,   #   #   #
+                                           17,   #   #   #
+                                           17,   #   #   #
+                                           17,   #   #   #
+                                           17,   #   #   #
+                                           17,   #   #   #
+                                           31,   #   #####
+                                         ] } )
+
+        self.write_queue.put( { 'action': 'store',
+                                'bitmap': self.SELECTED,
+                                'lines': [
+                                           31,   #   #####
+                                           17,   #   #   #
+                                           21,   #   # # #
+                                           21,   #   # # #
+                                           21,   #   # # #
+                                           21,   #   # # #
+                                           17,   #   #   #
+                                           31,   #   #####
+                                         ] } )
 
     def __del__(self):
         self.cad.lcd.backlight_off()
@@ -103,15 +142,8 @@ class BakeryDisplay:
 
             # Second line
             self.progress_pointer=0
-            self.write_queue.put( { 'action': 'store',
-                                    'bitmap': 0,
-                                    'lines': self.part_block[0] } )
-            self.write_queue.put( { 'action': 'bitmap',
-                                    'pos': [0,1],
-                                    'bitmap': 0 } )
 
             self.updates = False
-            #self.write_function(self.write_queue)
             if not self.write_function( self.disks.device_name(0),
                                         self.slist.current_full_path() ):
                 self.write_queue.put( { 'action': 'clear' } )
@@ -146,28 +178,19 @@ class BakeryDisplay:
                                     'text': '{0:5.2f}'.format(percent) } )
             k = percent / 6.25    #    percent * 16 / 100
             l = int(k)            #    Number of complete blocks
-            m = int((k - l) * 5)  #    Number of lines in partial block
+            m = int((k - l) * 6)  #    Number of lines in partial block
 
-            # Wrapped in an 'if' block to save a bit of time
-            # Writing a character is slow - avoid if possible
-            if self.progress_pointer < l:
-                while self.progress_pointer < l:
-                    self.write_queue.put( { 'action': 'bitmap',
-                                            'pos': [self.progress_pointer,1],
-                                            'bitmap': 1 } )
-                    self.progress_pointer = self.progress_pointer + 1
-
-                self.write_queue.put( { 'action': 'store',
-                                        'bitmap': 0,
-                                        'lines': self.part_block[m] } )
+            while self.progress_pointer < l:
                 self.write_queue.put( { 'action': 'bitmap',
-                                        'pos': [self.progress_pointer,1],
-                                        'bitmap': 0 } )
-            else:
-                # Don't need to re-write character. Just change the bitmap.
-                self.write_queue.put( { 'action': 'store',
-                                        'bitmap': 0,
-                                        'lines': self.part_block[m] } )
+                                        'pos': [self.progress_pointer, 1],
+                                        'bitmap': self.FULL_BLOCK } )
+                self.progress_pointer = self.progress_pointer + 1
+
+            if m > 0:
+                # m == 0 => empty block
+                self.write_queue.put( { 'action': 'bitmap',
+                                        'pos': [self.progress_pointer, 1],
+                                        'bitmap': self.BLOCK[m-1] } )
 
     def refresh(self):
         """Refresh the screen for the menu"""
@@ -198,11 +221,11 @@ class BakeryDisplay:
                     if self.disks.device_present(dev):
                         self.write_queue.put( { 'action': 'bitmap',
                                                 'pos': [dev*8,1],
-                                                'bitmap': 1 } )
+                                                'bitmap': self.SELECTED} )
                     else:
-                        self.write_queue.put( { 'action': 'write',
+                        self.write_queue.put( { 'action': 'bitmap',
                                                 'pos': [dev*8,1],
-                                                'text': ' ' } )
+                                                'bitmap': self.UNSELECTED} )
                     self.write_queue.put( { 'action': 'write',
                                             'pos': [dev*8+1,1],
                                             'text': '{0: <6}'.format(os.path.basename(name)) } )
@@ -212,13 +235,13 @@ class BakeryDisplay:
                     if self.device_state[dev] == 0:
                         self.write_queue.put( { 'action': 'bitmap',
                                                 'pos': [dev*8,1],
-                                                'bitmap': 1 } )
+                                                'bitmap': self.SELECTED } )
                         self.device_state[dev] = 1
                 else:
                     if self.device_state[dev] == 1:
-                        self.write_queue.put( { 'action': 'write',
+                        self.write_queue.put( { 'action': 'bitmap',
                                                 'pos': [dev*8,1],
-                                                'text': ' ' } )
+                                                'bitmap': self.UNSELECTED } )
                         self.device_state[dev] = 0
 
     def menu(self):

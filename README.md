@@ -46,7 +46,7 @@ Bakery looks for a configuration file called `bakery.cfg` either in the
 current directory or in `/etc`. This should contain:
 
     [images]
-    source=/path/to/imagess/directory
+    source=/path/to/images/directory
 
 ## Operation
 
