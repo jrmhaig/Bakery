@@ -33,16 +33,16 @@ def read_pipe(out, queue):
 
 def write_image(device, image):
     # Uncompressed size of a gzip file is stored in the last 4 bytes
-    fl = open(str(image), 'rb')
+    fl = open(image, 'rb')
     fl.seek(-4, 2)
     r = fl.read()
     fl.close()
     size = struct.unpack('<I', r)[0]
 
-    print("Image:", str(image))
+    print("Image:", image)
 
     # Unzip process
-    unzip = subprocess.Popen(['zcat', str(image)], stdout=subprocess.PIPE)
+    unzip = subprocess.Popen(['zcat', image], stdout=subprocess.PIPE)
 
     # DD process
     # Output to a pipe to catch status updates

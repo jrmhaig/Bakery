@@ -82,26 +82,19 @@ them and gzip the image.
 
 ## To do list
 
-* Can it be run without sudo? Is this necessary?
 * Add an 'exit' button.
 * It would be useful to mount and configure the image after installing.
 * Any files in /home/pi/images will be listed but only .img.gz files will work.
   It may be helpful to structure this in such a way that there can be other
   files, such as README files.
-* I am having problems with the USB-SD adapter arbitrarily remounting. I don't
-  know if this is to do with the SD card, the adapter or the power supply.
 * Switching between images doesn't overwrite properly if the new name is
   shorter than the old.
-* Why does the image selector look like '[ ]' while the device indicator is a
-  single character? Decide on one or the other!
 * Devices are now detected when they are plugged in and removed. The main SD
   writer needs to be identfied, by vendor and model ids, so that another device
   does not accidentally get written to.
 * No easy way to copy new images on when not connected to a network. Need to
   have a feature to use external USB storage, either writing images directly
   from one or copying them onto the Pi.
-* When a disk is being written, the disk detector could clean up if the SD
-  card is removed. At the moment it just gets messed up.
 * The init script doesn't appear to be shutting bakery down properly. Two
   python processes are left running. I think bakery.py needs to catch and
   handle the interrupt.

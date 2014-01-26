@@ -28,12 +28,6 @@ class SelectList(list):
         self.pointer = 0
         self.selected = None
 
-        ## TODO: Do something a bit more to check that the files are valid
-        #for dir in sources:
-        #    self.extend([ _Img(dir + '/' + f) for f in listdir(dir) ])
-        #    self.sources.append(dir)
-        #self.sort()
-
     def next(self):
         self.pointer += 1
         if self.pointer >= len(self):
@@ -47,21 +41,22 @@ class SelectList(list):
         return self.current()
 
     def current(self):
-        s = '[{0}] {1}'
-        return s.format('X' if self.selected == self.pointer else ' ',
-                        self[self.pointer].name)
+        return self[self.pointer].name
 
-    def current_full_path(self):
+    def selected_full_path(self):
         if self.selected == None:
             return None
         else:
-            return self[self.selected]
+            return str(self[self.selected])
 
     def select(self):
         if self.selected == self.pointer:
             self.selected = None
         else:
             self.selected = self.pointer
+
+    def current_is_selected(self):
+        return self.selected == self.pointer
 
 # TODO: Do something a bit more to check that the files are valid
 def disk_image_list(*sources):

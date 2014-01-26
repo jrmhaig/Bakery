@@ -107,7 +107,7 @@ class BakeryDisplay:
                                     'pos': [0, 0],
                                     'text': 'No disk present ' } )
             self.press_start = -1
-        elif self.slist.current_full_path() == None:
+        elif self.slist.selected_full_path() == None:
             self.write_queue.put( { 'action': 'clear' } )
             self.write_queue.put( { 'action': 'write',
                                     'pos': [0, 0],
@@ -145,7 +145,7 @@ class BakeryDisplay:
 
             self.updates = False
             if not self.write_function( self.disks.device_name(0),
-                                        self.slist.current_full_path() ):
+                                        self.slist.selected_full_path() ):
                 self.write_queue.put( { 'action': 'clear' } )
                 self.write_queue.put( { 'action': 'write',
                                         'pos': [0, 0],
@@ -197,9 +197,10 @@ class BakeryDisplay:
         self.write_queue.put( { 'action': 'clear' } )
 
         # Image name
+        self.image_checkbox( )
         self.write_queue.put( { 'action': 'write',
-                                'pos': [0,0],
-                                'text': '{0}'.format(self.slist.current()) } )
+                                'pos': [1,0],
+                                'text': self.slist.current() } )
 
         # Device
         self.devices_line(True)
@@ -268,20 +269,29 @@ class BakeryDisplay:
                 time.sleep(0.5)
 
     def prev(self, event):
+        self.image_checkbox( )
         self.write_queue.put( { 'action': 'write',
-                                'pos': [0,0],
+                                'pos': [1,0],
                                 'text': self.slist.prev() } )
 
     def next(self, event):
+        self.image_checkbox( )
         self.write_queue.put( { 'action': 'write',
-                                'pos': [0,0],
+                                'pos': [1,0],
                                 'text': self.slist.next() } )
 
     def select(self, event):
         self.slist.select()
+        self.image_checkbox( )
         self.write_queue.put( { 'action': 'write',
-                                'pos': [0,0],
+                                'pos': [1,0],
                                 'text': self.slist.current() } )
+
+    def image_checkbox(self):
+        self.write_queue.put( { 'action': 'bitmap',
+                                'pos': [0, 0],
+                                'bitmap': self.SELECTED if self.slist.current_is_selected() else self.UNSELECTED } )
+
 
 def _lcd_writer(queue):
     """Write to the LCD
