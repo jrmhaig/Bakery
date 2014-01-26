@@ -98,3 +98,5 @@ them and gzip the image.
 * The init script doesn't appear to be shutting bakery down properly. Two
   python processes are left running. I think bakery.py needs to catch and
   handle the interrupt.
+* It can probably do without the selection of images. It is probably enough
+  just to write the currently displayed image.
