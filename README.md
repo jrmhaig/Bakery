@@ -25,6 +25,11 @@ Did you read WARNING 1? If not, go back and read it again.
 * PiFace Control and Display
 * USB to SD adapter
 
+### Software
+
+* python3-pifacecad
+* python3-pyudev
+
 ### Set up
 
 Extract Bakery into:
