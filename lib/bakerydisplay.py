@@ -269,16 +269,18 @@ class BakeryDisplay:
                 time.sleep(0.5)
 
     def prev(self, event):
+        img = self.slist.prev()
         self.image_checkbox( )
         self.write_queue.put( { 'action': 'write',
                                 'pos': [1,0],
-                                'text': self.slist.prev() } )
+                                'text': img } )
 
     def next(self, event):
+        img = self.slist.next()
         self.image_checkbox( )
         self.write_queue.put( { 'action': 'write',
                                 'pos': [1,0],
-                                'text': self.slist.next() } )
+                                'text': img } )
 
     def select(self, event):
         self.slist.select()
