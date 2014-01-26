@@ -144,8 +144,18 @@ class BakeryDisplay:
             self.progress_pointer=0
 
             self.updates = False
-            if not self.write_function( self.disks.device_name(0),
+
+            start_time = time.time()
+            if self.write_function( self.disks.device_name(0),
                                         self.slist.selected_full_path() ):
+                self.write_queue.put( { 'action': 'clear' } )
+                self.write_queue.put( { 'action': 'write',
+                                        'pos': [0,0],
+                                        'text': '    FINISHED    ' } )
+                self.write_queue.put( { 'action': 'write',
+                                        'pos': [0,1],
+                                        'text': '{0} seconds'.format(int(time.time() - start_time)) } )
+            else:
                 self.write_queue.put( { 'action': 'clear' } )
                 self.write_queue.put( { 'action': 'write',
                                         'pos': [0, 0],
@@ -164,33 +174,26 @@ class BakeryDisplay:
         """Display the progress
 
         Write the percentage progress and show a progress bar on the LCD.
-        A percentage of -1 indicates completion.
 
         """
-        if percent == -1:
-            self.write_queue.put( { 'action': 'clear' } )
-            self.write_queue.put( { 'action': 'write',
-                                    'pos': [0,0],
-                                    'text': '    FINISHED    ' } )
-        else:
-            self.write_queue.put( { 'action': 'write',
-                                    'pos': [10,0],
-                                    'text': '{0:5.2f}'.format(percent) } )
-            k = percent / 6.25    #    percent * 16 / 100
-            l = int(k)            #    Number of complete blocks
-            m = int((k - l) * 6)  #    Number of lines in partial block
+        self.write_queue.put( { 'action': 'write',
+                                'pos': [10,0],
+                                'text': '{0:5.2f}'.format(percent) } )
+        k = percent / 6.25    #    percent * 16 / 100
+        l = int(k)            #    Number of complete blocks
+        m = int((k - l) * 6)  #    Number of lines in partial block
 
-            while self.progress_pointer < l:
-                self.write_queue.put( { 'action': 'bitmap',
-                                        'pos': [self.progress_pointer, 1],
-                                        'bitmap': self.FULL_BLOCK } )
-                self.progress_pointer = self.progress_pointer + 1
+        while self.progress_pointer < l:
+            self.write_queue.put( { 'action': 'bitmap',
+                                    'pos': [self.progress_pointer, 1],
+                                    'bitmap': self.FULL_BLOCK } )
+            self.progress_pointer = self.progress_pointer + 1
 
-            if m > 0:
-                # m == 0 => empty block
-                self.write_queue.put( { 'action': 'bitmap',
-                                        'pos': [self.progress_pointer, 1],
-                                        'bitmap': self.BLOCK[m-1] } )
+        if m > 0:
+            # m == 0 => empty block
+            self.write_queue.put( { 'action': 'bitmap',
+                                    'pos': [self.progress_pointer, 1],
+                                    'bitmap': self.BLOCK[m-1] } )
 
     def refresh(self):
         """Refresh the screen for the menu"""

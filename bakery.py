@@ -75,7 +75,6 @@ def write_image(device, image):
         except:
             pass
 
-    display.progress(-1)
     print("And finished")
     return True
 
