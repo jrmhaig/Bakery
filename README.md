@@ -32,6 +32,30 @@ Did you read WARNING 1? If not, go back and read it again.
 
 ### Set up
 
+A minimal Linux distribution can be found here:
+
+* http://moebiuslinux.sourceforge.net/
+
+Upgrade:
+
+    apt-get update
+    apt-get upgrade
+    apt-get clean all
+
+The last line cleans up the apt cache because there is not a lot of free space
+in the root partition.
+
+Install the required packages:
+
+    apt-get install python3-pifacecad python3-pyudev
+    apt-get clean all
+
+Enable SPI by removing this line from /etc/modprobe.d/raspi-blacklist.conf:
+
+    blacklist spi-bcm2708
+
+Reboot to enable the SPI module and PiFace CAD.
+
 Extract Bakery into:
 
     /home/pi/Bakery
@@ -100,3 +124,5 @@ them and gzip the image.
   handle the interrupt.
 * It can probably do without the selection of images. It is probably enough
   just to write the currently displayed image.
+* probe.sh does not need to use sudo if Bakery is already run as root. This
+  being the case it is probably unnecessary to have it as a separate script.
