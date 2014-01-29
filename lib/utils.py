@@ -88,13 +88,20 @@ def disk_image_list(*sources):
                 # Reverse before split to get cut into only 3 parts from the
                 # right. The things to match are therefore then all reversed.
                 spl = fl[::-1].split('.',2)
-                key = pth + '/' + spl[2][::-1]
-                if key not in file_groups:
-                    file_groups[key] = { 'post': [] }
-                if spl[1] == 'tsop':
-                    file_groups[key]['post'].append(spl[0][::-1])
-                elif spl[1] == 'gmi' and spl[0] == 'zg':
-                    file_groups[key]['format'] = 'img.gz'
+                print(spl)
+                key = pth + '/' + spl[-1][::-1]
+                print("key", key)
+                if len(spl) == 3:
+                    print("2")
+                    if key not in file_groups:
+                        file_groups[key] = { 'post': [] }
+                    if spl[1] == 'tsop':
+                        file_groups[key]['post'].append(spl[0][::-1])
+                    elif spl[1] == 'gmi' and spl[0] == 'zg':
+                        file_groups[key]['format'] = 'img.gz'
+                elif len(spl) == 2:
+                    print("1")
+                    pass
     for key in file_groups:
         images.append( DiskImage( key, file_groups[key]['post'] ) )
     images.sort()

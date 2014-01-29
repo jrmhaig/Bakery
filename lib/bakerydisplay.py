@@ -5,12 +5,13 @@ import time
 import os.path
 import socket
 import subprocess
+import re
 
 class BakeryDisplay:
 
     # Only use up to two devices
     # Without a USB hub, there cannot be any more on a Raspberry Pi
-    MAX_DEVICES = 2
+    MAX_DEVICES = 5
 
     # Number of seconds to require the button is pressed for
     PRESS_TIME = 5
@@ -30,10 +31,17 @@ class BakeryDisplay:
 
     # Buttons
     BUTTON_POINTER = 0
+    BUTTON_SELECT_DISPLAY = 1
+    BUTTON_SCROLL = 4
     BUTTON_WRITE = 5
     BUTTON_PREV = 6
     BUTTON_NEXT = 7
-    BUTTON_SCROLL = 4
+
+    # Displays
+    DISPLAY_MAIN = 0
+    DISPLAY_SYSTEM = 1
+    DISPLAY_FIRST = DISPLAY_MAIN
+    DISPLAY_LAST = DISPLAY_SYSTEM
 
     def __init__(self, disks, slist, write_function):
         # Callback function for writing to the device
@@ -54,30 +62,10 @@ class BakeryDisplay:
 
         self.cad = pifacecad.PiFaceCAD()
         self.listener = pifacecad.SwitchEventListener(chip=self.cad)
-        self.listener.register( self.BUTTON_WRITE,
-                                pifacecad.IODIR_FALLING_EDGE,
-                                self.pressed )
-        self.listener.register( self.BUTTON_WRITE,
-                                pifacecad.IODIR_RISING_EDGE,
-                                self.released )
-        self.listener.register( self.BUTTON_PREV,
-                                pifacecad.IODIR_FALLING_EDGE,
-                                self.prev )
-        self.listener.register( self.BUTTON_NEXT,
-                                pifacecad.IODIR_FALLING_EDGE,
-                                self.next )
 
-        self.listener.register( self.BUTTON_POINTER,
-                                pifacecad.IODIR_FALLING_EDGE,
-                                self.switch_pointer )
-
-        self.listener.register( self.BUTTON_SCROLL,
-                                pifacecad.IODIR_FALLING_EDGE,
-                                self.scroll_on )
-        self.listener.register( self.BUTTON_SCROLL,
-                                pifacecad.IODIR_RISING_EDGE,
-                                self.scroll_off )
         self.scroll = False
+
+        self.display = self.DISPLAY_MAIN
 
         self.write_queue = multiprocessing.Queue()
         self.writer = threading.Thread( target = _lcd_writer,
@@ -142,6 +130,7 @@ class BakeryDisplay:
         self.info_procs = [
                               self.devices_line,
                               self.ip_line,
+                              self.cpu_temp,
                               self.post_scripts_line,
                             ]
 
@@ -190,7 +179,7 @@ class BakeryDisplay:
             self.updates = False
 
             start_time = time.time()
-            if self.write_function( self.disks.device_name(0),
+            if self.write_function( self.disks.active_device(),
                                         self.slist.get_current(), self ):
                 self.write_queue.put( { 'action': 'clear' } )
                 self.write_queue.put( { 'action': 'write',
@@ -224,6 +213,51 @@ class BakeryDisplay:
                                 'pos': [0, self.pointer_pos],
                                 'bitmap': self.POINTER } )
 
+    def switch_display(self, event):
+        """Switch between displays"""
+        self.display = self.display + 1
+        if self.display > self.DISPLAY_LAST:
+            self.display = self.DISPLAY_FIRST
+        self.setup_controls()
+        self.refresh()
+
+    def setup_controls(self):
+        """Set up the listeners for the buttons"""
+
+        # Clear all listeners
+        self.listener.deregister()
+
+        # Settings for all displays
+        # Previous and next
+        self.listener.register( self.BUTTON_PREV,
+                                pifacecad.IODIR_FALLING_EDGE,
+                                self.prev )
+        self.listener.register( self.BUTTON_NEXT,
+                                pifacecad.IODIR_FALLING_EDGE,
+                                self.next )
+        # Scroll display
+        self.listener.register( self.BUTTON_SCROLL,
+                                pifacecad.IODIR_FALLING_EDGE,
+                                self.scroll_on )
+        self.listener.register( self.BUTTON_SCROLL,
+                                pifacecad.IODIR_RISING_EDGE,
+                                self.scroll_off )
+        # Switch through displays
+        self.listener.register( self.BUTTON_SELECT_DISPLAY,
+                                pifacecad.IODIR_FALLING_EDGE,
+                                self.switch_display )
+
+        if self.display == self.DISPLAY_MAIN:
+            self.listener.register( self.BUTTON_WRITE,
+                                    pifacecad.IODIR_FALLING_EDGE,
+                                    self.pressed )
+            self.listener.register( self.BUTTON_WRITE,
+                                    pifacecad.IODIR_RISING_EDGE,
+                                    self.released )
+            self.listener.register( self.BUTTON_POINTER,
+                                    pifacecad.IODIR_FALLING_EDGE,
+                                    self.switch_pointer )
+
     def progress(self, percent):
         """Display the progress
 
@@ -253,20 +287,25 @@ class BakeryDisplay:
         """Refresh the screen for the menu"""
         self.write_queue.put( { 'action': 'clear' } )
 
-        # Pointer
-        # For the moment, only on the top row
-        self.write_queue.put( { 'action': 'bitmap',
-                                'pos': [0, self.pointer_pos],
-                                'bitmap': self.POINTER } )
+        if self.display == self.DISPLAY_MAIN:
+            # Pointer
+            self.write_queue.put( { 'action': 'bitmap',
+                                    'pos': [0, self.pointer_pos],
+                                    'bitmap': self.POINTER } )
 
-        # Image name
-        self.write_queue.put( { 'action': 'write',
-                                'blank': 1,
-                                'pos': [self.IMG_X,0],
-                                'text': self.slist.current() } )
+            # Image name
+            self.write_queue.put( { 'action': 'write',
+                                    'blank': 1,
+                                    'pos': [self.IMG_X,0],
+                                    'text': self.slist.current() } )
 
-        # Device
-        self.info_line(True)
+            # Device
+            self.info_line(True)
+        else:
+            self.write_queue.put( { 'action': 'write',
+                                    'blank': 1,
+                                    'pos': [self.IMG_X,0],
+                                    'text': "Status menu" } )
 
     def info_line(self, rewrite=False):
         """Write the second line of the screen"""
@@ -289,6 +328,16 @@ class BakeryDisplay:
         if ip_addr == '':
             ip_addr = 'No IP address'
         self.write_queue.put( { 'action': 'write', 'pos': [self.INFO_X,1], 'text': ip_addr, 'blank': 1 } )
+
+    def cpu_temp(self, rewrite=False):
+        """Display the CPU temperature"""
+        cpu_temp = subprocess.check_output("/opt/vc/bin/vcgencmd measure_temp", shell=True).decode('utf-8')[:-1]
+        m = re.search(r"temp=(.+)",cpu_temp)
+        if m == None or m.group(1) == '':
+            message = 'Cannot get temperature'
+        else:
+            message = m.group(1)
+        self.write_queue.put( { 'action': 'write', 'pos': [self.INFO_X,1], 'text': message, 'blank': 1 } )
 
     def devices_line(self, rewrite=False):
         """Display the devices line on the LCD"""
@@ -335,13 +384,14 @@ class BakeryDisplay:
         # TODO Use this to have an exit button
         self.finish = 0
 
-        self.listener.activate()
-
         self.refresh()
         self.updates = True
 
+        self.setup_controls()
+        self.listener.activate()
+
         while self.finish == 0:
-            if self.is_pressed:
+            if self.is_pressed and self.display == self.DISPLAY_MAIN:
                 if (self.press_start > 0 and
                     self.countdown > 0 and
                     int(time.time() - self.press_start) > self.PRESS_TIME - self.countdown):
@@ -355,9 +405,14 @@ class BakeryDisplay:
                                         'step': 1 } )
                 time.sleep(0.3)
 
-            elif self.updates:
+            elif self.updates and self.display == self.DISPLAY_MAIN:
                 self.info_line()
-                time.sleep(0.5)
+                #time.sleep(0.5)
+                time.sleep(1)
+            else:
+                # Avoid burning the CPU
+                #time.sleep(0.5)
+                time.sleep(1)
 
     def prev(self, event):
         if self.pointer_pos == 0:
@@ -455,3 +510,7 @@ def _lcd_writer(queue):
                 elif message['step'] < 0:
                     cad.lcd.move_right()
                     message['step'] = message['step'] + 1
+        else:
+            # Avoid burning the CPU
+            #time.sleep(0.5)
+            time.sleep(1)

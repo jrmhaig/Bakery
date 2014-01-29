@@ -30,6 +30,9 @@ Did you read WARNING 1? If not, go back and read it again.
 * python3-pifacecad
 * python3-pyudev
 
+The pifacecad module must be version 4.1 or later. If 4.1 has not been released
+yet then the testing branch from Github must be used.
+
 ### Set up
 
 A minimal Linux distribution can be found here:
@@ -170,9 +173,6 @@ The text 'Config script' will be displayed during its execution.
 * No easy way to copy new images on when not connected to a network. Need to
   have a feature to use external USB storage, either writing images directly
   from one or copying them onto the Pi.
-* The init script doesn't appear to be shutting bakery down properly. Two
-  python processes are left running. I think bakery.py needs to catch and
-  handle the interrupt.
 
 ## Longer term plans
 

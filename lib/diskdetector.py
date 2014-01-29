@@ -120,6 +120,13 @@ class DiskEventListener(object):
     def device_present(self, n):
         return self.device_name(n) in self.disks
 
+    def active_device(self):
+        for i, d in enumerate(self.devices):
+            if self.device_present(i):
+                return d
+
+        return None
+
 class DeviceEvent(object):
     """A device event"""
     def __init__(self, action, device):
