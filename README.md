@@ -87,8 +87,6 @@ them and gzip the image.
 * Any files in /home/pi/images will be listed but only .img.gz files will work.
   It may be helpful to structure this in such a way that there can be other
   files, such as README files.
-* Switching between images doesn't overwrite properly if the new name is
-  shorter than the old.
 * Devices are now detected when they are plugged in and removed. The main SD
   writer needs to be identfied, by vendor and model ids, so that another device
   does not accidentally get written to.

@@ -202,6 +202,7 @@ class BakeryDisplay:
         # Image name
         self.image_checkbox( )
         self.write_queue.put( { 'action': 'write',
+                                'blank': 1,
                                 'pos': [1,0],
                                 'text': self.slist.current() } )
 
@@ -275,6 +276,7 @@ class BakeryDisplay:
         img = self.slist.prev()
         self.image_checkbox( )
         self.write_queue.put( { 'action': 'write',
+                                'blank': 1,
                                 'pos': [1,0],
                                 'text': img } )
 
@@ -282,6 +284,7 @@ class BakeryDisplay:
         img = self.slist.next()
         self.image_checkbox( )
         self.write_queue.put( { 'action': 'write',
+                                'blank': 1,
                                 'pos': [1,0],
                                 'text': img } )
 
@@ -289,6 +292,7 @@ class BakeryDisplay:
         self.slist.select()
         self.image_checkbox( )
         self.write_queue.put( { 'action': 'write',
+                                'blank': 1,
                                 'pos': [1,0],
                                 'text': self.slist.current() } )
 
@@ -304,11 +308,31 @@ def _lcd_writer(queue):
     This function is run as a background thread with a queue to avoid
     conflicting display updates.
 
+    Messages passed to the queue are hashes containing:
+
+        'action': 'clear'         - Clear the screen
+
+        'action': 'write'         - Write message
+        'pos': [ <int>, <int> ]   - Position to start text
+        'test': <string>          - Message to write
+        'blank': 0/1              - 1 = Clear to end of line (optional)
+
+        'action': 'store'         - Store bitmap
+        'bitmap': <int>           - Bitmap id
+        'lines': [ <int> * 8 ]    - Array of lines to make up bitmap
+
+        'action': 'bitmap'        - Write a bitmap
+        'pos': [ <int>, <int> ]   - Position to print bitmap
+        'bitmap': <int>           - Bitmap id
+
+        'action': 'finish'        - End
+
     """
     cad = pifacecad.PiFaceCAD()
     cad.lcd.backlight_on()
     cad.lcd.cursor_off()
     cad.lcd.blink_off()
+    line_length = [0, 0]
 
     while True:
         message = queue.get()
@@ -316,7 +340,17 @@ def _lcd_writer(queue):
             return
         elif message['action'] == 'write':
             cad.lcd.set_cursor(message['pos'][0], message['pos'][1])
-            cad.lcd.write(message['text'])
+            text_len = len(message['text'])
+            if ( message['pos'][0] + text_len < line_length[message['pos'][1]]
+                 and 'blank' in message and message['blank'] ):
+                ln = line_length[message['pos'][1]] - message['pos'][0]
+                line_length[message['pos'][1]] = message['pos'][0] + text_len 
+            else:
+                ln = text_len 
+                new_ln = message['pos'][0] + len(message['text'])
+                if new_ln > line_length[message['pos'][1]]:
+                   line_length[message['pos'][1]] = new_ln
+            cad.lcd.write(('{:<' + str(ln) + '}').format(message['text']))
         elif message['action'] == 'store':
             cad.lcd.store_custom_bitmap(message['bitmap'], message['lines'])
         elif message['action'] == 'bitmap':
