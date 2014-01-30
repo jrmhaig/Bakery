@@ -82,31 +82,31 @@ class SelectListTests(unittest.TestCase):
 
     def test_no_image_selected(self):
         sdi = disk_image_list(*self.ds)
-        self.assertIsNone(sdi.selected_full_path())
+        self.assertIsNone(sdi.selected_image_file())
 
     def test_select_image(self):
         sdi = disk_image_list(*self.ds)
         sdi.select()
-        self.assertEqual(sdi.selected_full_path(), '/tmp/bakery_tests_1/01-image1/01-image1.img.gz')
+        self.assertEqual(sdi.selected_image_file(), '/tmp/bakery_tests_1/01-image1/01-image1.img.gz')
 
     def test_select_image_then_change(self):
         sdi = disk_image_list(*self.ds)
         sdi.select()
         sdi.next()
-        self.assertEqual(sdi.selected_full_path(), '/tmp/bakery_tests_1/01-image1/01-image1.img.gz')
+        self.assertEqual(sdi.selected_image_file(), '/tmp/bakery_tests_1/01-image1/01-image1.img.gz')
 
     def test_select_image_then_change_select_new(self):
         sdi = disk_image_list(*self.ds)
         sdi.select()
         sdi.next()
         sdi.select()
-        self.assertEqual(sdi.selected_full_path(), '/tmp/bakery_tests_2/02-image2/02-image2.img.gz')
+        self.assertEqual(sdi.selected_image_file(), '/tmp/bakery_tests_2/02-image2/02-image2.img.gz')
 
     def test_select_deselect_image(self):
         sdi = disk_image_list(*self.ds)
         sdi.select()
         sdi.select()
-        self.assertIsNone(sdi.selected_full_path())
+        self.assertIsNone(sdi.selected_image_file())
 
     def test_current_is_not_selected(self):
         sdi = disk_image_list(*self.ds)

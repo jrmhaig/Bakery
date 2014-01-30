@@ -107,7 +107,7 @@ class BakeryDisplay:
                                     'pos': [0, 0],
                                     'text': 'No disk present ' } )
             self.press_start = -1
-        elif self.slist.selected_full_path() == None:
+        elif self.slist.selected_image_file() == None:
             self.write_queue.put( { 'action': 'clear' } )
             self.write_queue.put( { 'action': 'write',
                                     'pos': [0, 0],
@@ -147,7 +147,7 @@ class BakeryDisplay:
 
             start_time = time.time()
             if self.write_function( self.disks.device_name(0),
-                                        self.slist.selected_full_path() ):
+                                        self.slist.selected_image_file() ):
                 self.write_queue.put( { 'action': 'clear' } )
                 self.write_queue.put( { 'action': 'write',
                                         'pos': [0,0],

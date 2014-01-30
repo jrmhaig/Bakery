@@ -45,7 +45,7 @@ class SelectList(list):
     def current(self):
         return self[self.pointer].name
 
-    def selected_full_path(self):
+    def selected_image_file(self):
         if self.selected == None:
             return None
         else:
