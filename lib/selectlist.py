@@ -1,9 +1,11 @@
-from os import listdir, path
+#from os import listdir, path
+import os
+import re
 
 class DiskImage:
     def __init__(self, filepath):
-        self.name = path.basename(filepath)
-        self.directory = path.dirname(filepath)
+        self.name = os.path.basename(filepath)
+        self.directory = os.path.dirname(filepath)
 
     def __lt__(self, other):
         """Sorting rule
@@ -18,7 +20,7 @@ class DiskImage:
             return 1
 
     def __str__(self):
-        return self.directory + '/' + self.name
+        return self.directory + '/' + self.name + '.img.gz'
 
 class SelectList(list):
     def __init__(self):
@@ -58,11 +60,15 @@ class SelectList(list):
     def current_is_selected(self):
         return self.selected == self.pointer
 
-# TODO: Do something a bit more to check that the files are valid
 def disk_image_list(*sources):
     images = SelectList()
-    for dir in sources:
-        images.extend([ DiskImage(dir + '/' + f) for f in listdir(dir) ])
+    for dr in sources:
+        for sdr in os.listdir(dr):
+            pth = dr + '/' + sdr
+            for fl in os.listdir(pth):
+                m = re.search(r"(.+)\.img\.gz", fl)
+                if m != None:
+                    images.extend( [ DiskImage( pth + '/' + m.group(1) ) ] )
     images.sort()
     return images
 
