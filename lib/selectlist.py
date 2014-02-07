@@ -3,9 +3,12 @@ import os
 import re
 
 class DiskImage:
-    def __init__(self, filepath):
+    def __init__(self, filepath, post):
         self.name = os.path.basename(filepath)
         self.directory = os.path.dirname(filepath)
+        self.post = list(map( lambda x :
+                                self.directory + '/' + self.name + '.post.' + x,
+                                sorted(post) ) )
 
     def __lt__(self, other):
         """Sorting rule
@@ -21,6 +24,9 @@ class DiskImage:
 
     def __str__(self):
         return self.directory + '/' + self.name + '.img.gz'
+
+    def post_scripts(self):
+        return self.post
 
 class SelectList(list):
     def __init__(self):
@@ -51,6 +57,10 @@ class SelectList(list):
         else:
             return str(self[self.selected])
 
+    def selected_post_scripts(self):
+        return self[self.selected].post_scripts()
+        #return []
+
     def select(self):
         if self.selected == self.pointer:
             self.selected = None
@@ -62,13 +72,24 @@ class SelectList(list):
 
 def disk_image_list(*sources):
     images = SelectList()
+    file_groups = {}
     for dr in sources:
         for sdr in os.listdir(dr):
             pth = dr + '/' + sdr
-            for fl in os.listdir(pth):
-                m = re.search(r"(.+)\.img\.gz", fl)
-                if m != None:
-                    images.extend( [ DiskImage( pth + '/' + m.group(1) ) ] )
+            files = os.listdir(pth)
+            post = []
+            for fl in files:
+                spl = fl.split('.')
+                key = pth + '/' + spl[0]
+                if key not in file_groups:
+                    file_groups[key] = { 'post': [] }
+                if spl[1] == 'post':
+                    file_groups[key]['post'].append(spl[2])
+                    post.append(spl[2])
+                elif spl[1] == 'img' and spl[2] == 'gz':
+                    file_groups[key]['format'] = 'img.gz'
+    for key in file_groups:
+        images.append( DiskImage( key, file_groups[key]['post'] ) )
     images.sort()
     return images
 

@@ -12,12 +12,19 @@ class SelectListTests(unittest.TestCase):
                     [ '01-image1', '04-image4', '05-image5' ],
                     [ '02-image2', '03-image3' ],
                   ]
+        self.post = [ [ 3, 0, 0 ], [ 0, 0 ] ]
         self.tearDown()
         for i in range(len(self.ds)):
             os.makedirs(self.ds[i])
-            for img in self.sd[i]:
-                os.makedirs(self.ds[i] + '/' + img)
-                open(self.ds[i] + '/' + img + '/' + img + '.img.gz', 'a').close()
+            #for img in self.sd[i]:
+                #os.makedirs(self.ds[i] + '/' + img)
+                #open(self.ds[i] + '/' + img + '/' + img + '.img.gz', 'a').close()
+            for j in range(len(self.sd[i])):
+                dr = self.ds[i] + '/' + self.sd[i][j]
+                os.makedirs(self.ds[i] + '/' + self.sd[i][j])
+                open(dr + '/' + self.sd[i][j] + '.img.gz', 'a').close()
+                for k in range(self.post[i][j]):
+                    open(dr + '/' + self.sd[i][j] + '.post.' + str(k), 'a').close()
 
     def tearDown(self):
         for i in range(len(self.ds)):
@@ -122,3 +129,18 @@ class SelectListTests(unittest.TestCase):
         sdi.select()
         sdi.next()
         self.assertFalse(sdi.current_is_selected())
+
+    def test_post_script_list(self):
+        sdi = disk_image_list(*self.ds)
+        sdi.select()
+        scripts = sdi.selected_post_scripts()
+        self.assertEqual(len(scripts), 3)
+        for i in range(len(scripts)):
+            self.assertEqual(scripts[i], '/tmp/bakery_tests_1/01-image1/01-image1.post.' + str(i))
+
+    def test_no_post_scripts(self):
+        sdi = disk_image_list(*self.ds)
+        sdi.next()
+        sdi.select()
+        scripts = sdi.selected_post_scripts()
+        self.assertEqual(len(scripts), 0)
