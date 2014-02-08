@@ -1,6 +1,4 @@
-#from os import listdir, path
 import os
-import re
 
 class DiskImage:
     def __init__(self, filepath, post):
