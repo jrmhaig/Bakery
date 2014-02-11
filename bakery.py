@@ -10,9 +10,9 @@ import threading
 import time
 import pyudev
 import os.path
-from lib.bakerydisplay import *
-from lib.selectlist import *
-from lib.diskdetector import *
+import lib.bakerydisplay as bakerydisplay
+import lib.selectlist as selectlist
+import lib.diskdetector as diskdetector
 
 config_files = [
                 '/etc/bakery.cfg',
@@ -23,9 +23,9 @@ config = configparser.ConfigParser()
 config.read( config_files )
 dirs = config.get('images', 'source')
 
-images = disk_image_list(dirs)
+images = selectlist.disk_image_list(dirs)
 
-disks = DiskEventListener()
+disks = diskdetector.DiskEventListener()
 disks.activate()
 
 def read_pipe(out, queue):
@@ -78,35 +78,41 @@ def write_image(device, image):
             pass
 
     # Find partitions
-    # TODO Do this without an external script
-    subprocess.call(['/home/pi/Bakery/freshen.sh', device])
-    environment = { 'IMGDIR': image.directory }
-    pn = 1
-    for partition in pyudev.Context().list_devices(subsystem='block', DEVTYPE='partition'):
-        node = partition.device_node
-        print("node")
-        if re.search(r"{}".format(device), node):
-            print("PARTITION{}".format(pn), node)
-            environment["PARTITION{}".format(pn)] = node
-            pn = pn + 1
-
     if len(image.post_scripts()) > 0:
         display.write_queue.put( { 'action': 'write',
                                 'pos': [0, 0],
                                 'text': 'Post script:',
                                 'blank': 1 } )
-    for script in image.post_scripts():
-        display.write_queue.put( { 'action': 'write',
-                                'pos': [0, 1],
-                                'text': os.path.basename(script),
-                                'blank': 1 } )
-        subprocess.call([ script ], env = environment)
 
-    subprocess.call(['/home/pi/test.sh'], env=environment)
+        # TODO Do this without an external script
+        subprocess.call(['/home/pi/Bakery/freshen.sh', device])
+        environment = { 'IMGDIR': image.directory }
+        pn = 1
+        for partition in pyudev.Context().list_devices(subsystem='block', DEVTYPE='partition'):
+            node = partition.device_node
+            if re.search(r"{}".format(device), node):
+                environment["PARTITION{}".format(pn)] = node
+                pn = pn + 1
+
+        for script in image.post_scripts():
+            script_handle = open( script, 'r' )
+            # Default title - just the file name
+            title = os.path.basename(script)
+            for line in script_handle:
+                m = re.search(r"#TITLE# (.+)", line)
+                if m != None:
+                    title = m.group(1)
+                    break
+            display.write_queue.put( { 'action': 'write',
+                                    'pos': [0, 1],
+                                    'text': title,
+                                    'blank': 1 } )
+            script_handle.close()
+            subprocess.call([ script ], env = environment)
 
     print("And finished")
     return True
 
-display = BakeryDisplay(disks, images, write_image)
+display = bakerydisplay.BakeryDisplay(disks, images, write_image)
 
 display.menu()
