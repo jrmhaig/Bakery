@@ -49,6 +49,9 @@ class SelectList(list):
     def current(self):
         return self[self.pointer].name
 
+    def get_image(self):
+        return self[self.selected]
+
     def selected_image_file(self):
         if self.selected == None:
             return None
@@ -57,7 +60,6 @@ class SelectList(list):
 
     def selected_post_scripts(self):
         return self[self.selected].post_scripts()
-        #return []
 
     def select(self):
         if self.selected == self.pointer:

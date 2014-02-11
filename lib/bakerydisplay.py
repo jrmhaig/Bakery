@@ -146,8 +146,10 @@ class BakeryDisplay:
             self.updates = False
 
             start_time = time.time()
+            #if self.write_function( self.disks.device_name(0),
+            #                            self.slist.selected_image_file() ):
             if self.write_function( self.disks.device_name(0),
-                                        self.slist.selected_image_file() ):
+                                        self.slist.get_image() ):
                 self.write_queue.put( { 'action': 'clear' } )
                 self.write_queue.put( { 'action': 'write',
                                         'pos': [0,0],

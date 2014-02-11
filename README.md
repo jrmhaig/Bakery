@@ -53,6 +53,24 @@ current directory or in `/etc`. This should contain:
     [images]
     source=/path/to/images/directory
 
+The images inside this directory should be contained inside a subdirectory
+together with any script to be executed after writing, for example:
+
+    Raspbian/rbian-140107.img.gz
+    Bakery/bakery.img.gz
+    Bakery/bakery.post.1
+
+`bakery.img.gz` is a minimal image configured to run Bakery and 
+`bakery.post.1` is a script that copies some images into the correct location
+for it to use.
+
+`rbian-140107.img.gz` is Raspbian from 14/01/07 and does not require any post
+install configuration, although a script could be created to expand the file
+system, for example.
+
+In the scripts the devices for the partitions are available as $PARTITION1,
+$PARTITION2, etc. The image directory is available as $IMGDIR.
+
 ## Operation
 
 Run with:
