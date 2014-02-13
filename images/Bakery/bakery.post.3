@@ -1,0 +1,11 @@
+#!/bin/bash
+#TITLE# e2fsck.conf
+
+ROOT=/tmp/bakery_partition
+
+mount $PARTITION2 $ROOT
+# Not so much 'broken system clock' as 'non-existent system clock'
+echo '[options]' >> $ROOT/etc/e2fsck.conf
+echo 'broken_system_clock=true' >> $ROOT/etc/e2fsck.conf
+
+umount $ROOT
