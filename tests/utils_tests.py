@@ -87,33 +87,34 @@ class SelectListTests(unittest.TestCase):
         self.assertEqual(sdi.prev(), '01-image1')
         self.assertEqual(sdi.current(), '01-image1')
 
-    def test_no_image_selected(self):
-        sdi = disk_image_list(*self.ds)
-        self.assertIsNone(sdi.selected_image_file())
+    # These tests need re-writing. SelectList no long knows about images
+    #def test_no_image_selected(self):
+    #    sdi = disk_image_list(*self.ds)
+    #    self.assertIsNone(sdi.selected_image_file())
 
-    def test_select_image(self):
-        sdi = disk_image_list(*self.ds)
-        sdi.select()
-        self.assertEqual(sdi.selected_image_file(), '/tmp/bakery_tests_1/01-image1/01-image1.img.gz')
+    #def test_select_image(self):
+    #    sdi = disk_image_list(*self.ds)
+    #    sdi.select()
+    #    self.assertEqual(sdi.selected_image_file(), '/tmp/bakery_tests_1/01-image1/01-image1.img.gz')
 
-    def test_select_image_then_change(self):
-        sdi = disk_image_list(*self.ds)
-        sdi.select()
-        sdi.next()
-        self.assertEqual(sdi.selected_image_file(), '/tmp/bakery_tests_1/01-image1/01-image1.img.gz')
+    #def test_select_image_then_change(self):
+    #    sdi = disk_image_list(*self.ds)
+    #    sdi.select()
+    #    sdi.next()
+    #    self.assertEqual(sdi.selected_image_file(), '/tmp/bakery_tests_1/01-image1/01-image1.img.gz')
 
-    def test_select_image_then_change_select_new(self):
-        sdi = disk_image_list(*self.ds)
-        sdi.select()
-        sdi.next()
-        sdi.select()
-        self.assertEqual(sdi.selected_image_file(), '/tmp/bakery_tests_2/02-image2/02-image2.img.gz')
+    #def test_select_image_then_change_select_new(self):
+    #    sdi = disk_image_list(*self.ds)
+    #    sdi.select()
+    #    sdi.next()
+    #    sdi.select()
+    #    self.assertEqual(sdi.selected_image_file(), '/tmp/bakery_tests_2/02-image2/02-image2.img.gz')
 
-    def test_select_deselect_image(self):
-        sdi = disk_image_list(*self.ds)
-        sdi.select()
-        sdi.select()
-        self.assertIsNone(sdi.selected_image_file())
+    #def test_select_deselect_image(self):
+    #    sdi = disk_image_list(*self.ds)
+    #    sdi.select()
+    #    sdi.select()
+    #    self.assertIsNone(sdi.selected_image_file())
 
     def test_current_is_not_selected(self):
         sdi = disk_image_list(*self.ds)
@@ -130,10 +131,10 @@ class SelectListTests(unittest.TestCase):
         sdi.next()
         self.assertFalse(sdi.current_is_selected())
 
+    # These tests need re-writing. SelectList no long knows about images
     def test_post_script_list(self):
         sdi = disk_image_list(*self.ds)
-        sdi.select()
-        scripts = sdi.selected_post_scripts()
+        scripts = sdi.get_current().post_scripts()
         self.assertEqual(len(scripts), 3)
         for i in range(len(scripts)):
             self.assertEqual(scripts[i], '/tmp/bakery_tests_1/01-image1/01-image1.post.' + str(i))
@@ -141,6 +142,33 @@ class SelectListTests(unittest.TestCase):
     def test_no_post_scripts(self):
         sdi = disk_image_list(*self.ds)
         sdi.next()
-        sdi.select()
-        scripts = sdi.selected_post_scripts()
+        scripts = sdi.get_current().post_scripts()
         self.assertEqual(len(scripts), 0)
+
+    def test_get_current(self):
+        sdi = disk_image_list(*self.ds)
+        item = sdi.get_current()
+        self.assertIsInstance(item, DiskImage)
+        self.assertEqual(str(item), '/tmp/bakery_tests_1/01-image1/01-image1.img.gz')
+
+    def test_get_next_current(self):
+        sdi = disk_image_list(*self.ds)
+        sdi.next()
+        self.assertEqual(str(sdi.get_current()), '/tmp/bakery_tests_2/02-image2/02-image2.img.gz')
+        sdi.next()
+        self.assertEqual(str(sdi.get_current()), '/tmp/bakery_tests_2/03-image3/03-image3.img.gz')
+        sdi.next()
+        self.assertEqual(str(sdi.get_current()), '/tmp/bakery_tests_1/04-image4/04-image4.img.gz')
+        sdi.next()
+        self.assertEqual(str(sdi.get_current()), '/tmp/bakery_tests_1/05-image5/05-image5.img.gz')
+
+    def test_get_prev_current(self):
+        sdi = disk_image_list(*self.ds)
+        sdi.prev()
+        self.assertEqual(str(sdi.get_current()), '/tmp/bakery_tests_1/05-image5/05-image5.img.gz')
+        sdi.prev()
+        self.assertEqual(str(sdi.get_current()), '/tmp/bakery_tests_1/04-image4/04-image4.img.gz')
+        sdi.prev()
+        self.assertEqual(str(sdi.get_current()), '/tmp/bakery_tests_2/03-image3/03-image3.img.gz')
+        sdi.prev()
+        self.assertEqual(str(sdi.get_current()), '/tmp/bakery_tests_2/02-image2/02-image2.img.gz')
