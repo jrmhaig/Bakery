@@ -126,3 +126,17 @@ them and gzip the image.
   just to write the currently displayed image.
 * probe.sh does not need to use sudo if Bakery is already run as root. This
   being the case it is probably unnecessary to have it as a separate script.
+
+## Longer term plans
+
+The SD card writer (and duplicator) is just the first step towards a 'control
+centre' device that can be used for managing a network of Raspberry Pis in a
+classroom environment. Future features could include:
+
+* Store known configurations for a quick refresh for a particular user
+* DHCP server
+* Network router/gateway
+* FTP, NFS, Samba
+* Git - Gitlab and proxy to Github
+* Update services - eg, apt and yum server
+* Copy files to and from Pis on the network. In particular, copy files onto all Pis.
