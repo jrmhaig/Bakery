@@ -58,7 +58,7 @@ class SelectList(list):
         return self[self.pointer].name
 
     def get_image(self):
-        return self[self.selected]
+        return self[self.pointer]
 
     def selected_image_file(self):
         if self.selected == None:

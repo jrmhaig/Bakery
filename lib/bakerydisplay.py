@@ -107,21 +107,12 @@ class BakeryDisplay:
                                     'pos': [0, 0],
                                     'text': 'No disk present ' } )
             self.press_start = -1
-        elif self.slist.selected_image_file() == None:
-            self.write_queue.put( { 'action': 'clear' } )
-            self.write_queue.put( { 'action': 'write',
-                                    'pos': [0, 0],
-                                    'text': 'No image' } )
-            self.write_queue.put( { 'action': 'write',
-                                    'pos': [0, 1],
-                                    'text': 'selected' } )
-            self.press_start = -1
         else:
             self.press_start = time.time()
             self.is_pressed = True
             self.countdown = self.PRESS_TIME
             self.write_queue.put( { 'action': 'write',
-                                    'pos': [0, 0],
+                                    'pos': [0, 1],
                                     'text': 'Write in {0} secs '.format(self.PRESS_TIME) } )
 
     def released(self, event):
@@ -202,10 +193,9 @@ class BakeryDisplay:
         self.write_queue.put( { 'action': 'clear' } )
 
         # Image name
-        self.image_checkbox( )
         self.write_queue.put( { 'action': 'write',
                                 'blank': 1,
-                                'pos': [1,0],
+                                'pos': [0,0],
                                 'text': self.slist.current() } )
 
         # Device
@@ -267,7 +257,7 @@ class BakeryDisplay:
                     int(time.time() - self.press_start) > self.PRESS_TIME - self.countdown):
                     self.countdown = self.countdown - 1
                     self.write_queue.put( { 'action': 'write',
-                                            'pos': [9, 0],
+                                            'pos': [9, 1],
                                             'text': str(self.countdown) } )
 
             if self.updates:
@@ -276,33 +266,24 @@ class BakeryDisplay:
 
     def prev(self, event):
         img = self.slist.prev()
-        self.image_checkbox( )
         self.write_queue.put( { 'action': 'write',
                                 'blank': 1,
-                                'pos': [1,0],
+                                'pos': [0,0],
                                 'text': img } )
 
     def next(self, event):
         img = self.slist.next()
-        self.image_checkbox( )
         self.write_queue.put( { 'action': 'write',
                                 'blank': 1,
-                                'pos': [1,0],
+                                'pos': [0,0],
                                 'text': img } )
 
     def select(self, event):
         self.slist.select()
-        self.image_checkbox( )
         self.write_queue.put( { 'action': 'write',
                                 'blank': 1,
-                                'pos': [1,0],
+                                'pos': [0,0],
                                 'text': self.slist.current() } )
-
-    def image_checkbox(self):
-        self.write_queue.put( { 'action': 'bitmap',
-                                'pos': [0, 0],
-                                'bitmap': self.SELECTED if self.slist.current_is_selected() else self.UNSELECTED } )
-
 
 def _lcd_writer(queue):
     """Write to the LCD
