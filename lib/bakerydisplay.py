@@ -40,9 +40,8 @@ class BakeryDisplay:
 
         self.cad = pifacecad.PiFaceCAD()
         self.listener = pifacecad.SwitchEventListener(chip=self.cad)
-        self.listener.register(4, pifacecad.IODIR_FALLING_EDGE, self.pressed)
-        self.listener.register(4, pifacecad.IODIR_RISING_EDGE, self.released)
-        self.listener.register(5, pifacecad.IODIR_FALLING_EDGE, self.select)
+        self.listener.register(5, pifacecad.IODIR_FALLING_EDGE, self.pressed)
+        self.listener.register(5, pifacecad.IODIR_RISING_EDGE, self.released)
         self.listener.register(6, pifacecad.IODIR_FALLING_EDGE, self.prev)
         self.listener.register(7, pifacecad.IODIR_FALLING_EDGE, self.next)
 
@@ -277,13 +276,6 @@ class BakeryDisplay:
                                 'blank': 1,
                                 'pos': [0,0],
                                 'text': img } )
-
-    def select(self, event):
-        self.slist.select()
-        self.write_queue.put( { 'action': 'write',
-                                'blank': 1,
-                                'pos': [0,0],
-                                'text': self.slist.current() } )
 
 def _lcd_writer(queue):
     """Write to the LCD

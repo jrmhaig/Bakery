@@ -1,7 +1,7 @@
 import os
 import shutil
 import unittest
-from lib.selectlist import *
+from lib.utils import *
 
 class SelectListTests(unittest.TestCase):
 
