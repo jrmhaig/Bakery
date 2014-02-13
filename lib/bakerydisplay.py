@@ -149,7 +149,7 @@ class BakeryDisplay:
             #if self.write_function( self.disks.device_name(0),
             #                            self.slist.selected_image_file() ):
             if self.write_function( self.disks.device_name(0),
-                                        self.slist.get_image() ):
+                                        self.slist.get_image(), self ):
                 self.write_queue.put( { 'action': 'clear' } )
                 self.write_queue.put( { 'action': 'write',
                                         'pos': [0,0],
