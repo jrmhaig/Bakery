@@ -1,0 +1,17 @@
+#!/bin/bash
+#TITLE# Copy Bakery
+
+ROOT=/tmp/bakery_partition
+
+mkdir $ROOT
+mount $PARTITION3 $ROOT
+mkdir $ROOT/images
+cp -r $IMGDIR $ROOT/images/
+umount $ROOT
+
+mount $PARTITION2 $ROOT
+mv $ROOT/home/pi/Bakery $ROOT/home/pi/old.Bakery
+cp -a /home/pi/Bakery $ROOT/home/pi/Bakery
+rm -f $ROOT/home/pi/Bakery/conf/*
+
+umount $ROOT
