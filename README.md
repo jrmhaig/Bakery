@@ -77,6 +77,24 @@ current directory or in `/etc`. This should contain:
     [images]
     source=/path/to/images/directory
 
+The images inside this directory should be contained inside a subdirectory
+together with any script to be executed after writing, for example:
+
+    Raspbian/rbian-140107.img.gz
+    Bakery/bakery.img.gz
+    Bakery/bakery.post.1
+
+`bakery.img.gz` is a minimal image configured to run Bakery and 
+`bakery.post.1` is a script that copies some images into the correct location
+for it to use.
+
+`rbian-140107.img.gz` is Raspbian from 14/01/07 and does not require any post
+install configuration, although a script could be created to expand the file
+system, for example.
+
+In the scripts the devices for the partitions are available as $PARTITION1,
+$PARTITION2, etc. The image directory is available as $IMGDIR.
+
 ## Operation
 
 Run with:
@@ -104,15 +122,47 @@ Note that images provided by distributions may be packaged up in various forms,
 such as tar, tar.gz and zip. None of these will work so you will need to unpack
 them and gzip the image.
 
+## Configuration scripts
+
+The configuration scripts for an image must be in the same directory as the
+image and named consistently. For `image.img` the scripts must be called:
+
+    image.post.1
+    image.post.2
+    image.post.3
+    (etc)
+
+The number indicates the order in which they are executed.
+
+The scripts have the following environment variables set:
+
+    $IMGDIR = Directory containing the image and scripts
+    $PARTITION1 = Device of the first partition on the image
+    $PARTITION2 = Device of the second partition on the image
+    (etc)
+
+The title of the script is the first comment in the format:
+
+    #TITLE# Config script
+
+The text 'Config script' will be displayed during its execution.
+
+### Example script ###
+
+    #!/bin/bash
+    #TITLE# Set the hostname
+    # The root partition is the second partition on the disk
+    
+    mount $PARTITION2 /mnt
+    echo new-hostname > /mnt/etc/hostname
+    umount $PARTITION2
+
 ## To do list
 
 * Add an 'exit' button.
-* It would be useful to mount and configure the image after installing.
 * Any files in /home/pi/images will be listed but only .img.gz files will work.
   It may be helpful to structure this in such a way that there can be other
   files, such as README files.
-* Switching between images doesn't overwrite properly if the new name is
-  shorter than the old.
 * Devices are now detected when they are plugged in and removed. The main SD
   writer needs to be identfied, by vendor and model ids, so that another device
   does not accidentally get written to.

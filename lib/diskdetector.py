@@ -5,7 +5,7 @@ import threading
 import pyudev
 import sys
 import time
-from subprocess import call
+import subprocess
 
 class DiskFunctionMap(object):
     """Map actions to callback functions"""
@@ -160,7 +160,12 @@ def watch_disk_events(queue, devices):
     actions = [ 'remove_disk', 'add_disk' ]
     while True:
         for i in range(len(devices)):
-            if on[i] != call(["/home/pi/Bakery/probe.sh", devices[i]]):
+            probe = subprocess.Popen(['fdisk', '-l', devices[i]], stdout=subprocess.PIPE)
+            count = 0
+            for line in probe.stdout:
+                # Maybe use this output later?
+                count += 1
+            if ( on[i] == 0 and count > 0 ) or ( on[i] == 1 and count == 0 ):
                 on[i] = 1 - on[i]
                 queue.put(DeviceEvent(actions[on[i]], devices[i]))
         time.sleep(1)
