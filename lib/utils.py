@@ -35,6 +35,14 @@ class DiskImage:
         return self.post
 
 class SelectList(list):
+    """ Select List
+
+    Extend the normal list with:
+      * A pointer to the current item
+      * A selected item of the list, which may be different from the pointer
+        or None
+
+    """
     def __init__(self):
 
         self.sources = [] 
@@ -57,17 +65,8 @@ class SelectList(list):
     def current(self):
         return self[self.pointer].name
 
-    def get_image(self):
-        return self[self.selected]
-
-    def selected_image_file(self):
-        if self.selected == None:
-            return None
-        else:
-            return str(self[self.selected])
-
-    def selected_post_scripts(self):
-        return self[self.selected].post_scripts()
+    def get_current(self):
+        return self[self.pointer]
 
     def select(self):
         if self.selected == self.pointer:
