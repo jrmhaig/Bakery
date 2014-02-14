@@ -3,6 +3,7 @@ import multiprocessing
 import threading
 import time
 import os.path
+import socket
 
 class BakeryDisplay:
 
@@ -31,6 +32,8 @@ class BakeryDisplay:
     BUTTON_WRITE = 5
     BUTTON_PREV = 6
     BUTTON_NEXT = 7
+
+    INFO_ITEMS = 2
 
     def __init__(self, disks, slist, write_function):
         # Callback function for writing to the device
@@ -127,6 +130,7 @@ class BakeryDisplay:
                                            0,    #
                                          ] } )
         self.pointer_pos = 0
+        self.info_n = 0
 
     def __del__(self):
         self.cad.lcd.backlight_off()
@@ -248,7 +252,15 @@ class BakeryDisplay:
                                 'text': self.slist.current() } )
 
         # Device
-        self.devices_line(True)
+        self.info_line(True)
+
+    def info_line(self, rewrite=False):
+        """Write the second line of the screen"""
+        if self.info_n == 0:
+            self.devices_line(rewrite)
+        else:
+            ip_addr = socket.gethostbyname(socket.gethostname())
+            self.write_queue.put( { 'action': 'write', 'pos': [self.INFO_X,1], 'text': ip_addr } )
 
     def devices_line(self, rewrite=False):
         """Display the devices line on the LCD"""
@@ -311,7 +323,7 @@ class BakeryDisplay:
                                             'text': str(self.countdown) } )
 
             if self.updates:
-                self.devices_line()
+                self.info_line()
                 time.sleep(0.5)
 
     def prev(self, event):
@@ -321,6 +333,9 @@ class BakeryDisplay:
                                     'blank': 1,
                                     'pos': [self.IMG_X,0],
                                     'text': img } )
+        elif self.pointer_pos == 1:
+            self.info_n = ( self.info_n - 1 ) % self.INFO_ITEMS
+            self.info_line(True)
 
     def next(self, event):
         if self.pointer_pos == 0:
@@ -329,6 +344,9 @@ class BakeryDisplay:
                                     'blank': 1,
                                     'pos': [self.IMG_X,0],
                                     'text': img } )
+        elif self.pointer_pos == 1:
+            self.info_n = ( self.info_n + 1 ) % self.INFO_ITEMS
+            self.info_line(True)
 
 def _lcd_writer(queue):
     """Write to the LCD
