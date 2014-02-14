@@ -20,6 +20,17 @@ class BakeryDisplay:
     # Unselected and selected indicator icons
     UNSELECTED = 5
     SELECTED = 6
+    POINTER = 7
+
+    # Start position of two lines in the main display
+    IMG_X = 1
+    INFO_X = 1
+
+    # Buttons
+    BUTTON_POINTER = 0
+    BUTTON_WRITE = 5
+    BUTTON_PREV = 6
+    BUTTON_NEXT = 7
 
     def __init__(self, disks, slist, write_function):
         # Callback function for writing to the device
@@ -40,10 +51,22 @@ class BakeryDisplay:
 
         self.cad = pifacecad.PiFaceCAD()
         self.listener = pifacecad.SwitchEventListener(chip=self.cad)
-        self.listener.register(5, pifacecad.IODIR_FALLING_EDGE, self.pressed)
-        self.listener.register(5, pifacecad.IODIR_RISING_EDGE, self.released)
-        self.listener.register(6, pifacecad.IODIR_FALLING_EDGE, self.prev)
-        self.listener.register(7, pifacecad.IODIR_FALLING_EDGE, self.next)
+        self.listener.register( self.BUTTON_WRITE,
+                                pifacecad.IODIR_FALLING_EDGE,
+                                self.pressed )
+        self.listener.register( self.BUTTON_WRITE,
+                                pifacecad.IODIR_RISING_EDGE,
+                                self.released )
+        self.listener.register( self.BUTTON_PREV,
+                                pifacecad.IODIR_FALLING_EDGE,
+                                self.prev )
+        self.listener.register( self.BUTTON_NEXT,
+                                pifacecad.IODIR_FALLING_EDGE,
+                                self.next )
+
+        self.listener.register( self.BUTTON_POINTER,
+                                pifacecad.IODIR_FALLING_EDGE,
+                                self.switch_pointer )
 
         self.write_queue = multiprocessing.Queue()
         self.writer = threading.Thread( target = _lcd_writer,
@@ -90,6 +113,20 @@ class BakeryDisplay:
                                            17,   #   #   #
                                            31,   #   #####
                                          ] } )
+
+        self.write_queue.put( { 'action': 'store',
+                                'bitmap': self.POINTER,
+                                'lines': [
+                                           0,    #   
+                                           8,    #    #
+                                           12,   #    ##
+                                           14,   #    ###
+                                           12,   #    ##
+                                           8,    #    #
+                                           0,    #    
+                                           0,    #
+                                         ] } )
+        self.pointer_pos = 0
 
     def __del__(self):
         self.cad.lcd.backlight_off()
@@ -160,6 +197,15 @@ class BakeryDisplay:
         else:
             self.refresh()
 
+    def switch_pointer(self, event):
+        self.write_queue.put( { 'action': 'write',
+                                'pos': [0, self.pointer_pos],
+                                'text': ' ' } )
+        self.pointer_pos = 1 - self.pointer_pos
+        self.write_queue.put( { 'action': 'bitmap',
+                                'pos': [0, self.pointer_pos],
+                                'bitmap': self.POINTER } )
+
     def progress(self, percent):
         """Display the progress
 
@@ -189,10 +235,16 @@ class BakeryDisplay:
         """Refresh the screen for the menu"""
         self.write_queue.put( { 'action': 'clear' } )
 
+        # Pointer
+        # For the moment, only on the top row
+        self.write_queue.put( { 'action': 'bitmap',
+                                'pos': [0, self.pointer_pos],
+                                'bitmap': self.POINTER } )
+
         # Image name
         self.write_queue.put( { 'action': 'write',
                                 'blank': 1,
-                                'pos': [0,0],
+                                'pos': [self.IMG_X,0],
                                 'text': self.slist.current() } )
 
         # Device
@@ -209,19 +261,19 @@ class BakeryDisplay:
                 if name == None:
                     # No device
                     self.write_queue.put( { 'action': 'write',
-                                            'pos': [dev*8,1],
+                                            'pos': [self.INFO_X + dev*7, 1],
                                             'text': ' '*8 } )
                 else:
                     if self.disks.device_present(dev):
                         self.write_queue.put( { 'action': 'bitmap',
-                                                'pos': [dev*8,1],
+                                                'pos': [self.INFO_X + dev*7, 1],
                                                 'bitmap': self.SELECTED} )
                     else:
                         self.write_queue.put( { 'action': 'bitmap',
-                                                'pos': [dev*8,1],
+                                                'pos': [self.INFO_X + dev*7, 1],
                                                 'bitmap': self.UNSELECTED} )
                     self.write_queue.put( { 'action': 'write',
-                                            'pos': [dev*8+1,1],
+                                            'pos': [self.INFO_X + dev*7 + 1, 1],
                                             'text': '{0: <6}'.format(os.path.basename(name)) } )
         else:
             for dev in range(self.MAX_DEVICES):
@@ -229,12 +281,13 @@ class BakeryDisplay:
                     if self.device_state[dev] == 0:
                         self.write_queue.put( { 'action': 'bitmap',
                                                 'pos': [dev*8,1],
+                                                'pos': [self.INFO_X + dev*7, 1],
                                                 'bitmap': self.SELECTED } )
                         self.device_state[dev] = 1
                 else:
                     if self.device_state[dev] == 1:
                         self.write_queue.put( { 'action': 'bitmap',
-                                                'pos': [dev*8,1],
+                                                'pos': [self.INFO_X + dev*7, 1],
                                                 'bitmap': self.UNSELECTED } )
                         self.device_state[dev] = 0
 
@@ -265,14 +318,14 @@ class BakeryDisplay:
         img = self.slist.prev()
         self.write_queue.put( { 'action': 'write',
                                 'blank': 1,
-                                'pos': [0,0],
+                                'pos': [self.IMG_X,0],
                                 'text': img } )
 
     def next(self, event):
         img = self.slist.next()
         self.write_queue.put( { 'action': 'write',
                                 'blank': 1,
-                                'pos': [0,0],
+                                'pos': [self.IMG_X,0],
                                 'text': img } )
 
 def _lcd_writer(queue):
