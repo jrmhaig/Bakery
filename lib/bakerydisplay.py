@@ -277,6 +277,8 @@ class BakeryDisplay:
     def ip_line(self, rewrite=False):
         """Display the IP address"""
         ip_addr = subprocess.check_output("hostname --all-ip-addresses", shell=True).decode('utf-8')[:-1]
+        if ip_addr == '':
+            ip_addr = 'No IP address'
         self.write_queue.put( { 'action': 'write', 'pos': [self.INFO_X,1], 'text': ip_addr, 'blank': 1 } )
 
     def devices_line(self, rewrite=False):
