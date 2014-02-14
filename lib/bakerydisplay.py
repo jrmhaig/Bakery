@@ -315,18 +315,20 @@ class BakeryDisplay:
                 time.sleep(0.5)
 
     def prev(self, event):
-        img = self.slist.prev()
-        self.write_queue.put( { 'action': 'write',
-                                'blank': 1,
-                                'pos': [self.IMG_X,0],
-                                'text': img } )
+        if self.pointer_pos == 0:
+            img = self.slist.prev()
+            self.write_queue.put( { 'action': 'write',
+                                    'blank': 1,
+                                    'pos': [self.IMG_X,0],
+                                    'text': img } )
 
     def next(self, event):
-        img = self.slist.next()
-        self.write_queue.put( { 'action': 'write',
-                                'blank': 1,
-                                'pos': [self.IMG_X,0],
-                                'text': img } )
+        if self.pointer_pos == 0:
+            img = self.slist.next()
+            self.write_queue.put( { 'action': 'write',
+                                    'blank': 1,
+                                    'pos': [self.IMG_X,0],
+                                    'text': img } )
 
 def _lcd_writer(queue):
     """Write to the LCD
