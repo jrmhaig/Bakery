@@ -4,6 +4,7 @@ import threading
 import time
 import os.path
 import socket
+import subprocess
 
 class BakeryDisplay:
 
@@ -32,8 +33,6 @@ class BakeryDisplay:
     BUTTON_WRITE = 5
     BUTTON_PREV = 6
     BUTTON_NEXT = 7
-
-    INFO_ITEMS = 2
 
     def __init__(self, disks, slist, write_function):
         # Callback function for writing to the device
@@ -131,6 +130,11 @@ class BakeryDisplay:
                                          ] } )
         self.pointer_pos = 0
         self.info_n = 0
+        self.info_procs = [
+                              self.devices_line,
+                              self.ip_line,
+                              self.post_scripts_line,
+                            ]
 
     def __del__(self):
         self.cad.lcd.backlight_off()
@@ -202,6 +206,7 @@ class BakeryDisplay:
             self.refresh()
 
     def switch_pointer(self, event):
+        """Switch the pointer between lines"""
         self.write_queue.put( { 'action': 'write',
                                 'pos': [0, self.pointer_pos],
                                 'text': ' ' } )
@@ -256,11 +261,23 @@ class BakeryDisplay:
 
     def info_line(self, rewrite=False):
         """Write the second line of the screen"""
-        if self.info_n == 0:
-            self.devices_line(rewrite)
-        else:
-            ip_addr = socket.gethostbyname(socket.gethostname())
-            self.write_queue.put( { 'action': 'write', 'pos': [self.INFO_X,1], 'text': ip_addr } )
+        self.info_procs[self.info_n](rewrite)
+
+    def post_scripts_line(self, rewrite=False):
+        """Display information about the post scripts"""
+        n = len(self.slist.get_current().post_scripts())
+        fmt = "{} post script"
+        if n != 1:
+            fmt = fmt + 's'
+        self.write_queue.put( { 'action': 'write',
+                                'pos': [self.INFO_X,1],
+                                'text': fmt.format(n),
+                                'blank': 1 } )
+
+    def ip_line(self, rewrite=False):
+        """Display the IP address"""
+        ip_addr = subprocess.check_output("hostname --all-ip-addresses", shell=True).decode('utf-8')[:-1]
+        self.write_queue.put( { 'action': 'write', 'pos': [self.INFO_X,1], 'text': ip_addr, 'blank': 1 } )
 
     def devices_line(self, rewrite=False):
         """Display the devices line on the LCD"""
@@ -322,7 +339,7 @@ class BakeryDisplay:
                                             'pos': [9, 1],
                                             'text': str(self.countdown) } )
 
-            if self.updates:
+            elif self.updates:
                 self.info_line()
                 time.sleep(0.5)
 
@@ -334,7 +351,7 @@ class BakeryDisplay:
                                     'pos': [self.IMG_X,0],
                                     'text': img } )
         elif self.pointer_pos == 1:
-            self.info_n = ( self.info_n - 1 ) % self.INFO_ITEMS
+            self.info_n = ( self.info_n - 1 ) % len(self.info_procs)
             self.info_line(True)
 
     def next(self, event):
@@ -345,7 +362,7 @@ class BakeryDisplay:
                                     'pos': [self.IMG_X,0],
                                     'text': img } )
         elif self.pointer_pos == 1:
-            self.info_n = ( self.info_n + 1 ) % self.INFO_ITEMS
+            self.info_n = ( self.info_n + 1 ) % len(self.info_procs)
             self.info_line(True)
 
 def _lcd_writer(queue):
