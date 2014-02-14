@@ -102,9 +102,13 @@ Run with:
     sudo python3 bakery.py
 
 Images are found in /home/pi/images and should be gzipped.
-Use the rocker switch to move between different images and press to select.
-Press and hold button number 5 for five seconds to write the image to the SD
-card. The progress will be written on the display.
+
+### Controls
+
+* *Button 1:* Switch active line on display
+* *Button 5:* Scroll display
+* *Rocker left/right:* Move between options
+* *Rocker button:* Hold for 5 seconds to write currently displayed image
 
 ## Images
 
@@ -160,9 +164,6 @@ The text 'Config script' will be displayed during its execution.
 ## To do list
 
 * Add an 'exit' button.
-* Any files in /home/pi/images will be listed but only .img.gz files will work.
-  It may be helpful to structure this in such a way that there can be other
-  files, such as README files.
 * Devices are now detected when they are plugged in and removed. The main SD
   writer needs to be identfied, by vendor and model ids, so that another device
   does not accidentally get written to.
@@ -172,10 +173,6 @@ The text 'Config script' will be displayed during its execution.
 * The init script doesn't appear to be shutting bakery down properly. Two
   python processes are left running. I think bakery.py needs to catch and
   handle the interrupt.
-* It can probably do without the selection of images. It is probably enough
-  just to write the currently displayed image.
-* probe.sh does not need to use sudo if Bakery is already run as root. This
-  being the case it is probably unnecessary to have it as a separate script.
 
 ## Longer term plans
 
@@ -183,6 +180,8 @@ The SD card writer (and duplicator) is just the first step towards a 'control
 centre' device that can be used for managing a network of Raspberry Pis in a
 classroom environment. Future features could include:
 
+* Install a very small 'seed' image that then completes installation over
+  the network. For a large number of installs this may be quicker.
 * Store known configurations for a quick refresh for a particular user
 * DHCP server
 * Network router/gateway

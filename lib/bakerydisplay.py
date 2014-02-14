@@ -33,6 +33,7 @@ class BakeryDisplay:
     BUTTON_WRITE = 5
     BUTTON_PREV = 6
     BUTTON_NEXT = 7
+    BUTTON_SCROLL = 4
 
     def __init__(self, disks, slist, write_function):
         # Callback function for writing to the device
@@ -69,6 +70,14 @@ class BakeryDisplay:
         self.listener.register( self.BUTTON_POINTER,
                                 pifacecad.IODIR_FALLING_EDGE,
                                 self.switch_pointer )
+
+        self.listener.register( self.BUTTON_SCROLL,
+                                pifacecad.IODIR_FALLING_EDGE,
+                                self.scroll_on )
+        self.listener.register( self.BUTTON_SCROLL,
+                                pifacecad.IODIR_RISING_EDGE,
+                                self.scroll_off )
+        self.scroll = False
 
         self.write_queue = multiprocessing.Queue()
         self.writer = threading.Thread( target = _lcd_writer,
@@ -341,6 +350,11 @@ class BakeryDisplay:
                                             'pos': [9, 1],
                                             'text': str(self.countdown) } )
 
+            elif self.scroll:
+                self.write_queue.put( { 'action': 'scroll',
+                                        'step': 1 } )
+                time.sleep(0.3)
+
             elif self.updates:
                 self.info_line()
                 time.sleep(0.5)
@@ -367,6 +381,13 @@ class BakeryDisplay:
             self.info_n = ( self.info_n + 1 ) % len(self.info_procs)
             self.info_line(True)
 
+    def scroll_on(self, event):
+        self.scroll = True
+
+    def scroll_off(self, event):
+        self.scroll = False
+        self.refresh()
+
 def _lcd_writer(queue):
     """Write to the LCD
 
@@ -389,6 +410,9 @@ def _lcd_writer(queue):
         'action': 'bitmap'        - Write a bitmap
         'pos': [ <int>, <int> ]   - Position to print bitmap
         'bitmap': <int>           - Bitmap id
+
+        'action': 'scroll'        - Scroll a line
+        'step': <int>             - Places to scroll
 
         'action': 'finish'        - End
 
@@ -423,3 +447,11 @@ def _lcd_writer(queue):
             cad.lcd.write_custom_bitmap( message['bitmap'] )
         elif message['action'] == 'clear':
             cad.lcd.clear()
+        elif message['action'] == 'scroll':
+            while message['step'] != 0:
+                if message['step'] > 0:
+                    cad.lcd.move_left()
+                    message['step'] = message['step'] - 1
+                elif message['step'] < 0:
+                    cad.lcd.move_right()
+                    message['step'] = message['step'] + 1
