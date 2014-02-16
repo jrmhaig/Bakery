@@ -90,7 +90,8 @@ run () {
 stop () {
   if is_running; then
     read PID < "$DAEMON_PIDFILE"
-    kill $PID
+    GID=`ps opgid= $PID | tr -d ' '`
+    kill -- -$GID
   fi
   sleep $INIT_SLEEPTIME
   if is_running; then
