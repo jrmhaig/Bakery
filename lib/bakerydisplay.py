@@ -7,7 +7,7 @@ import socket
 import subprocess
 import re
 
-class BakeryDisplay:
+class BakeryDisplay(list):
 
     # Only use up to two devices
     # Without a USB hub, there cannot be any more on a Raspberry Pi
@@ -144,7 +144,7 @@ class BakeryDisplay:
         pressed for five seconds.
 
         """
-        if len(self.disks.disks) == 0:
+        if self.disks.current().present == False:
             self.write_queue.put( { 'action': 'write',
                                     'pos': [0, 0],
                                     'text': 'No disk present ' } )
@@ -179,8 +179,8 @@ class BakeryDisplay:
             self.updates = False
 
             start_time = time.time()
-            if self.write_function( self.disks.active_device(),
-                                        self.slist.get_current(), self ):
+            if self.write_function( self.disks.current(),
+                                        self.slist.current(), self ):
                 self.write_queue.put( { 'action': 'clear' } )
                 self.write_queue.put( { 'action': 'write',
                                         'pos': [0,0],
@@ -225,6 +225,7 @@ class BakeryDisplay:
         """Set up the listeners for the buttons"""
 
         # Clear all listeners
+        print("Clear listeners")
         self.listener.deregister()
 
         # Settings for all displays
@@ -248,6 +249,7 @@ class BakeryDisplay:
                                 self.switch_display )
 
         if self.display == self.DISPLAY_MAIN:
+            print("Setup main listeners")
             self.listener.register( self.BUTTON_WRITE,
                                     pifacecad.IODIR_FALLING_EDGE,
                                     self.pressed )
@@ -297,15 +299,24 @@ class BakeryDisplay:
             self.write_queue.put( { 'action': 'write',
                                     'blank': 1,
                                     'pos': [self.IMG_X,0],
-                                    'text': self.slist.current() } )
+                                    'text': self.slist.current().name } )
 
             # Device
-            self.info_line(True)
+            self.show_device(self.INFO_X, 1)
+            #self.write_queue.put( { 'action': 'write',
+            #                        'blank': 1,
+            #                        'pos': [self.INFO_X,1],
+            #                        'text': self.disks.current() } )
+
+            ## Device
+            #self.devices_line(True)
+            ##self.info_line(True)
         else:
             self.write_queue.put( { 'action': 'write',
                                     'blank': 1,
                                     'pos': [self.IMG_X,0],
                                     'text': "Status menu" } )
+            self.info_line()
 
     def info_line(self, rewrite=False):
         """Write the second line of the screen"""
@@ -313,7 +324,7 @@ class BakeryDisplay:
 
     def post_scripts_line(self, rewrite=False):
         """Display information about the post scripts"""
-        n = len(self.slist.get_current().post_scripts())
+        n = len(self.slist.current().post_scripts())
         fmt = "{} post script"
         if n != 1:
             fmt = fmt + 's'
@@ -341,12 +352,13 @@ class BakeryDisplay:
 
     def devices_line(self, rewrite=False):
         """Display the devices line on the LCD"""
-        if rewrite or self.n_devices != len(self.disks.devices):
+        if rewrite or self.n_devices != len(self.disks):
             # Number of devices has changed
-            self.n_devices = len(self.disks.devices)
+            self.n_devices = len(self.disks)
             self.device_state = [0]*self.MAX_DEVICES
             for dev in range(self.MAX_DEVICES):
-                name = self.disks.device_name(dev)
+                #name = self.disks.device_name(dev)
+                name = self.disks[dev]
                 if name == None:
                     # No device
                     self.write_queue.put( { 'action': 'write',
@@ -363,7 +375,7 @@ class BakeryDisplay:
                                                 'bitmap': self.UNSELECTED} )
                     self.write_queue.put( { 'action': 'write',
                                             'pos': [self.INFO_X + dev*7 + 1, 1],
-                                            'text': '{0: <6}'.format(os.path.basename(name)) } )
+                                            'text': '{0: <6}'.format(os.path.basename(str(name))) } )
         else:
             for dev in range(self.MAX_DEVICES):
                 if self.disks.device_present(dev):
@@ -406,35 +418,51 @@ class BakeryDisplay:
                 time.sleep(0.3)
 
             elif self.updates and self.display == self.DISPLAY_MAIN:
-                self.info_line()
-                #time.sleep(0.5)
+                self.show_device(self.INFO_X, 1)
+                #self.info_line()
                 time.sleep(1)
             else:
                 # Avoid burning the CPU
-                #time.sleep(0.5)
-                time.sleep(1)
+                time.sleep(0.2)
 
     def prev(self, event):
+        print("In prev")
+        print("Pointer:", self.pointer_pos)
         if self.pointer_pos == 0:
-            img = self.slist.prev()
+            img = self.slist.prev().name
             self.write_queue.put( { 'action': 'write',
                                     'blank': 1,
                                     'pos': [self.IMG_X,0],
                                     'text': img } )
         elif self.pointer_pos == 1:
-            self.info_n = ( self.info_n - 1 ) % len(self.info_procs)
-            self.info_line(True)
+            drive = self.disks.prev()
+            self.show_device(self.IMG_X, 1)
 
     def next(self, event):
+        print("In next")
         if self.pointer_pos == 0:
-            img = self.slist.next()
+            img = self.slist.next().name
             self.write_queue.put( { 'action': 'write',
                                     'blank': 1,
                                     'pos': [self.IMG_X,0],
                                     'text': img } )
         elif self.pointer_pos == 1:
-            self.info_n = ( self.info_n + 1 ) % len(self.info_procs)
-            self.info_line(True)
+            drive = self.disks.next()
+            self.show_device(self.IMG_X, 1)
+
+    def show_device(self, x, y):
+        self.write_queue.put( { 'action': 'write',
+                                'blank': 1,
+                                'pos': [x + 1, y],
+                                'text': str(self.disks.current()) } )
+        if self.disks.current().present:
+            self.write_queue.put( { 'action': 'bitmap',
+                                    'pos': [x, y],
+                                    'bitmap': self.SELECTED} )
+        else:
+            self.write_queue.put( { 'action': 'bitmap',
+                                    'pos': [x, y],
+                                    'bitmap': self.UNSELECTED} )
 
     def scroll_on(self, event):
         self.scroll = True
@@ -483,26 +511,32 @@ def _lcd_writer(queue):
         if message['action'] == 'finish':
             return
         elif message['action'] == 'write':
+            print("LCD: Write")
             cad.lcd.set_cursor(message['pos'][0], message['pos'][1])
-            text_len = len(message['text'])
+            m = str(message['text'])
+            text_len = len(m)
             if ( message['pos'][0] + text_len < line_length[message['pos'][1]]
                  and 'blank' in message and message['blank'] ):
                 ln = line_length[message['pos'][1]] - message['pos'][0]
                 line_length[message['pos'][1]] = message['pos'][0] + text_len 
             else:
                 ln = text_len 
-                new_ln = message['pos'][0] + len(message['text'])
+                new_ln = message['pos'][0] + len(m)
                 if new_ln > line_length[message['pos'][1]]:
                    line_length[message['pos'][1]] = new_ln
-            cad.lcd.write(('{:<' + str(ln) + '}').format(message['text']))
+            cad.lcd.write(('{:<' + str(ln) + '}').format(m))
         elif message['action'] == 'store':
+            print("LCD: Store")
             cad.lcd.store_custom_bitmap(message['bitmap'], message['lines'])
         elif message['action'] == 'bitmap':
+            print("LCD: Bitmap")
             cad.lcd.set_cursor(message['pos'][0], message['pos'][1])
             cad.lcd.write_custom_bitmap( message['bitmap'] )
         elif message['action'] == 'clear':
+            print("LCD: Clear")
             cad.lcd.clear()
         elif message['action'] == 'scroll':
+            print("LCD: Scroll")
             while message['step'] != 0:
                 if message['step'] > 0:
                     cad.lcd.move_left()
@@ -512,5 +546,4 @@ def _lcd_writer(queue):
                     message['step'] = message['step'] + 1
         else:
             # Avoid burning the CPU
-            #time.sleep(0.5)
-            time.sleep(1)
+            time.sleep(0.2)

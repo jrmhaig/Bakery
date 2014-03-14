@@ -34,6 +34,14 @@ class DiskImage:
     def post_scripts(self):
         return self.post
 
+class Drive:
+    def __init__(self, path):
+        self.path = path
+        self.present = False
+
+    def __str__(self):
+        return self.path
+
 class SelectList(list):
     """ Select List
 
@@ -45,28 +53,34 @@ class SelectList(list):
     """
     def __init__(self):
 
-        self.sources = [] 
         list.__init__(self)
         self.pointer = 0
         self.selected = None
 
     def next(self):
-        self.pointer += 1
-        if self.pointer >= len(self):
-            self.pointer = 0
-        return self.current()
+        if len(self) > 0:
+            self.pointer += 1
+            if self.pointer >= len(self):
+                self.pointer = 0
+            return self.current()
+        else:
+            return None
 
     def prev(self):
-        self.pointer -= 1
-        if self.pointer < 0:
-            self.pointer = len(self)-1
-        return self.current()
+        if len(self) > 0:
+            self.pointer -= 1
+            if self.pointer < 0:
+                self.pointer = len(self)-1
+            return self.current()
+        else:
+            return None
 
     def current(self):
-        return self[self.pointer].name
-
-    def get_current(self):
-        return self[self.pointer]
+        if self.pointer >= len(self):
+            return "Oh dear - " + str(self.pointer)
+        else:
+            #return self[self.pointer].name
+            return self[self.pointer]
 
     def select(self):
         if self.selected == self.pointer:
@@ -116,7 +130,6 @@ def read_pipe(out, queue):
 
 def write_image(device, image, display):
     """Write the image to the card """
-
     # Uncompressed size of a gzip file is stored in the last 4 bytes
     fl = open(str(image), 'rb')
     fl.seek(-4, 2)
