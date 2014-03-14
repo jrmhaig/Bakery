@@ -34,7 +34,7 @@ class DiskEventListener(utils.SelectList):
         for device in self.context.list_devices(subsystem='block', DEVTYPE='disk'):
             major = device['MAJOR']
             if major == '8' or major == '3':
-                self.append(utils.Drive(device.device_node))
+                self.append(utils.Drive(device.device_node, device['ID_MODEL']))
 
         self.set_disk_detector()
         self.device_detector = multiprocessing.Process(
@@ -64,7 +64,7 @@ class DiskEventListener(utils.SelectList):
 
         self.disk_detector = multiprocessing.Process(
             target=watch_disk_events,
-            args=(self.queue, [ str(d) for d in self ]))
+            args=(self.queue, [ d.path for d in self ]))
             #args=(self.queue, self.devices))
 
         if restart:
@@ -101,13 +101,15 @@ class DiskEventListener(utils.SelectList):
             print(event.device + ' is already in the list!')
             sys.exit(1)
         else:
-            self.append(utils.Drive(event.device))
+            self.append(utils.Drive(event.device, event.model))
             self.set_disk_detector()
 
     def remove_device(self, event):
         d = self.find(event.device)
         if d != None:
             self.remove(d)
+            if self.pointer <= len(self):
+                self.pointer = 0
             self.set_disk_detector()
         else:
             print(event.device + ' is not in the list!')
@@ -115,7 +117,7 @@ class DiskEventListener(utils.SelectList):
 
     def find(self, dev):
         for d in self:
-            if dev == str(d):
+            if dev == d.path:
                 return d
         return None
 
@@ -140,9 +142,10 @@ class DiskEventListener(utils.SelectList):
 
 class DeviceEvent(object):
     """A device event"""
-    def __init__(self, action, device):
+    def __init__(self, action, device, model = None):
         self.action = action
         self.device = device
+        self.model = model
 
     def __str__(self):
         s = "action: {action}\n" \
@@ -165,7 +168,7 @@ def watch_device_events(queue, context):
     monitor.filter_by('block', 'disk')
     for action, device in monitor:
         if action == 'add' or action == 'remove':
-            queue.put(DeviceEvent(action + "_device", device.device_node))
+            queue.put(DeviceEvent(action + "_device", device.device_node, device['ID_MODEL']))
 
 def watch_disk_events(queue, devices):
     """Watch for new disks

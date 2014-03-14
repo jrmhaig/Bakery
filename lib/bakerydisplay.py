@@ -179,7 +179,7 @@ class BakeryDisplay(list):
             self.updates = False
 
             start_time = time.time()
-            if self.write_function( self.disks.current(),
+            if self.write_function( self.disks.current().path(),
                                         self.slist.current(), self ):
                 self.write_queue.put( { 'action': 'clear' } )
                 self.write_queue.put( { 'action': 'write',
@@ -451,18 +451,24 @@ class BakeryDisplay(list):
             self.show_device(self.IMG_X, 1)
 
     def show_device(self, x, y):
-        self.write_queue.put( { 'action': 'write',
-                                'blank': 1,
-                                'pos': [x + 1, y],
-                                'text': str(self.disks.current()) } )
-        if self.disks.current().present:
-            self.write_queue.put( { 'action': 'bitmap',
+        if self.disks.current() == None:
+            self.write_queue.put( { 'action': 'write',
+                                    'blank': 1,
                                     'pos': [x, y],
-                                    'bitmap': self.SELECTED} )
+                                    'text': '' } )
         else:
-            self.write_queue.put( { 'action': 'bitmap',
-                                    'pos': [x, y],
-                                    'bitmap': self.UNSELECTED} )
+            self.write_queue.put( { 'action': 'write',
+                                    'blank': 1,
+                                    'pos': [x + 1, y],
+                                    'text': self.disks.current() } )
+            if self.disks.current() != None and self.disks.current().present:
+                self.write_queue.put( { 'action': 'bitmap',
+                                        'pos': [x, y],
+                                        'bitmap': self.SELECTED} )
+            else:
+                self.write_queue.put( { 'action': 'bitmap',
+                                        'pos': [x, y],
+                                        'bitmap': self.UNSELECTED} )
 
     def scroll_on(self, event):
         self.scroll = True
@@ -511,9 +517,10 @@ def _lcd_writer(queue):
         if message['action'] == 'finish':
             return
         elif message['action'] == 'write':
-            print("LCD: Write")
             cad.lcd.set_cursor(message['pos'][0], message['pos'][1])
-            m = str(message['text'])
+            m = ''
+            if m != None:
+                m = str(message['text'])
             text_len = len(m)
             if ( message['pos'][0] + text_len < line_length[message['pos'][1]]
                  and 'blank' in message and message['blank'] ):
@@ -526,17 +533,13 @@ def _lcd_writer(queue):
                    line_length[message['pos'][1]] = new_ln
             cad.lcd.write(('{:<' + str(ln) + '}').format(m))
         elif message['action'] == 'store':
-            print("LCD: Store")
             cad.lcd.store_custom_bitmap(message['bitmap'], message['lines'])
         elif message['action'] == 'bitmap':
-            print("LCD: Bitmap")
             cad.lcd.set_cursor(message['pos'][0], message['pos'][1])
             cad.lcd.write_custom_bitmap( message['bitmap'] )
         elif message['action'] == 'clear':
-            print("LCD: Clear")
             cad.lcd.clear()
         elif message['action'] == 'scroll':
-            print("LCD: Scroll")
             while message['step'] != 0:
                 if message['step'] > 0:
                     cad.lcd.move_left()

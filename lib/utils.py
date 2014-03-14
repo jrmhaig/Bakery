@@ -35,11 +35,16 @@ class DiskImage:
         return self.post
 
 class Drive:
-    def __init__(self, path):
+    def __init__(self, path, model):
         self.path = path
+        self.model = model
         self.present = False
 
     def __str__(self):
+        return self.model
+
+
+    def path(self):
         return self.path
 
 class SelectList(list):
@@ -77,7 +82,7 @@ class SelectList(list):
 
     def current(self):
         if self.pointer >= len(self):
-            return "Oh dear - " + str(self.pointer)
+            return None
         else:
             #return self[self.pointer].name
             return self[self.pointer]
@@ -144,7 +149,7 @@ def write_image(device, image, display):
 
     # DD process
     # Output to a pipe to catch status updates
-    dd = subprocess.Popen(['dd', 'of=' + device, 'bs=1M'], bufsize=1, stdin=unzip.stdout, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    dd = subprocess.Popen(['dd', 'of=' + str(device), 'bs=1M'], bufsize=1, stdin=unzip.stdout, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     dd_queue = queue.Queue()
     dd_thread = threading.Thread(target = read_pipe, args=(dd.stdout, dd_queue))
     dd_thread.daemon = True
