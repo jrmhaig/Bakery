@@ -141,12 +141,6 @@ class BakeryDisplay(list):
                                            0,    #    
                                            0,    #
                                          ] } )
-        #self.info_procs = [
-        #                      self.devices_line,
-        #                      self.ip_line,
-        #                      self.cpu_temp,
-        #                      self.post_scripts_line,
-        #                    ]
 
     def __del__(self):
         self.cad.lcd.backlight_off()
@@ -361,17 +355,6 @@ class BakeryDisplay(list):
         """Write the second line of the screen"""
         self.system_data[self.system_n](rewrite)
 
-    #def post_scripts_line(self, rewrite=False):
-    #    """Display information about the post scripts"""
-    #    n = len(self.images.current().post_scripts())
-    #    fmt = "{} post script"
-    #    if n != 1:
-    #        fmt = fmt + 's'
-    #    self.write_queue.put( { 'action': 'write',
-    #                            'pos': [self.INFO_X,1],
-    #                            'text': fmt.format(n),
-    #                            'blank': 1 } )
-
     def ip_address(self, rewrite=False):
         """Display the IP address"""
         ip_addr = subprocess.check_output("hostname --all-ip-addresses", shell=True).decode('utf-8')[:-1]
@@ -388,48 +371,6 @@ class BakeryDisplay(list):
         else:
             message = m.group(1)
         self.write_queue.put( { 'action': 'write', 'pos': [0, 1], 'text': message, 'blank': 1 } )
-
-    #def devices_line(self, rewrite=False):
-    #    """Display the devices line on the LCD"""
-    #    if rewrite or self.n_devices != len(self.disks):
-    #        # Number of devices has changed
-    #        self.n_devices = len(self.disks)
-    #        self.device_state = [0]*self.MAX_DEVICES
-    #        for dev in range(self.MAX_DEVICES):
-    #            #name = self.disks.device_name(dev)
-    #            name = self.disks[dev]
-    #            if name == None:
-    #                # No device
-    #                self.write_queue.put( { 'action': 'write',
-    #                                        'pos': [self.INFO_X + dev*7, 1],
-    #                                        'text': ' '*8 } )
-    #            else:
-    #                if self.disks.device_present(dev):
-    #                    self.write_queue.put( { 'action': 'bitmap',
-    #                                            'pos': [self.INFO_X + dev*7, 1],
-    #                                            'bitmap': self.SELECTED} )
-    #                else:
-    #                    self.write_queue.put( { 'action': 'bitmap',
-    #                                            'pos': [self.INFO_X + dev*7, 1],
-    #                                            'bitmap': self.UNSELECTED} )
-    #                self.write_queue.put( { 'action': 'write',
-    #                                        'pos': [self.INFO_X + dev*7 + 1, 1],
-    #                                        'text': '{0: <6}'.format(os.path.basename(str(name))) } )
-    #    else:
-    #        for dev in range(self.MAX_DEVICES):
-    #            if self.disks.device_present(dev):
-    #                if self.device_state[dev] == 0:
-    #                    self.write_queue.put( { 'action': 'bitmap',
-    #                                            'pos': [dev*8,1],
-    #                                            'pos': [self.INFO_X + dev*7, 1],
-    #                                            'bitmap': self.SELECTED } )
-    #                    self.device_state[dev] = 1
-    #            else:
-    #                if self.device_state[dev] == 1:
-    #                    self.write_queue.put( { 'action': 'bitmap',
-    #                                            'pos': [self.INFO_X + dev*7, 1],
-    #                                            'bitmap': self.UNSELECTED } )
-    #                    self.device_state[dev] = 0
 
     def menu(self):
         # TODO Use this to have an exit button
@@ -458,9 +399,7 @@ class BakeryDisplay(list):
 
             elif self.updates and self.display == self.DISPLAY_MAIN:
                 # TODO Check for change of devices list
-                #self.show_device(self.main_lines[1]['x'], 1)
                 self.show_device_state()
-                #self.info_line()
                 time.sleep(1)
             else:
                 # Avoid burning the CPU
@@ -526,14 +465,6 @@ class BakeryDisplay(list):
                                     'pos': [self.main_lines[1]['x'], 1],
                                     'text': self.main_lines[1]['source'].current() } )
         self.show_device_state()
-            #if self.main_lines[1]['source'].current() != None and self.main_lines[1]['source'].current().present:
-            #    self.write_queue.put( { 'action': 'bitmap',
-            #                            'pos': [x, y],
-            #                            'bitmap': self.SELECTED} )
-            #else:
-            #    self.write_queue.put( { 'action': 'bitmap',
-            #                            'pos': [x, y],
-            #                            'bitmap': self.UNSELECTED} )
 
     def scroll_on(self, event):
         self.scroll = True
