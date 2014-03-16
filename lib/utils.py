@@ -167,6 +167,12 @@ def write_image(device, image, display):
 
         # Unzip process
         unzip = subprocess.Popen(['zcat', str(image)], stdout=subprocess.PIPE)
+
+        # Make sure it starts
+        while unzip.poll() is not None:
+            print("Waiting for unzip to start")
+            sleep(0.1)
+
         print("unzip PID:", unzip.pid)
         dd = subprocess.Popen(['dd', 'of=' + str(device), 'bs=1M'], bufsize=1, stdin=unzip.stdout, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
