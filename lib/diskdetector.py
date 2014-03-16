@@ -121,24 +121,11 @@ class DiskEventListener(utils.SelectList):
                 return d
         return None
 
-    #def device_name(self, n):
-    #    try:
-    #        return self.devices[n]
-    #    except:
-    #        return None
-
     def device_present(self, n):
         if n < len(self):
             return self[n].present
         else:
             return False
-
-    #def active_device(self):
-    #    for i, d in enumerate(self.devices):
-    #        if self.device_present(i):
-    #            return d
-    #
-    #    return None
 
 class DeviceEvent(object):
     """A device event"""

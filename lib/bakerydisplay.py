@@ -167,6 +167,7 @@ class BakeryDisplay(list):
             self.press_start = time.time()
             self.is_pressed = True
             self.countdown = self.PRESS_TIME
+            self.write_queue.put( { 'action': 'clear queue' } )
             self.write_queue.put( { 'action': 'write',
                                     'pos': [0, 1],
                                     'text': 'Write in {0} secs '.format(self.PRESS_TIME) } )
@@ -576,43 +577,65 @@ def _lcd_writer(queue):
     cad.lcd.blink_off()
     line_length = [0, 0]
 
+    standard_queue = []
+    background_queue = []
+
     while True:
-        message = queue.get()
-        print("Message is a", type(message))
-        if message['action'] == 'finish':
-            return
-        elif message['action'] == 'write':
-            cad.lcd.set_cursor(message['pos'][0], message['pos'][1])
-            m = ''
-            if m != None:
-                m = str(message['text'])
-            text_len = len(m)
-            if ( message['pos'][0] + text_len < line_length[message['pos'][1]]
-                 and 'blank' in message and message['blank'] ):
-                ln = line_length[message['pos'][1]] - message['pos'][0]
-                line_length[message['pos'][1]] = message['pos'][0] + text_len 
-            else:
-                ln = text_len 
-                new_ln = message['pos'][0] + len(m)
-                if new_ln > line_length[message['pos'][1]]:
-                   line_length[message['pos'][1]] = new_ln
-            cad.lcd.write(('{:<' + str(ln) + '}').format(m))
-        elif message['action'] == 'store':
-            cad.lcd.store_custom_bitmap(message['bitmap'], message['lines'])
-        elif message['action'] == 'bitmap':
-            cad.lcd.set_cursor(message['pos'][0], message['pos'][1])
-            cad.lcd.write_custom_bitmap( message['bitmap'] )
-        elif message['action'] == 'clear':
-            cad.lcd.clear()
-        elif message['action'] == 'scroll':
-            while message['step'] != 0:
-                if message['step'] > 0:
-                    cad.lcd.move_left()
-                    message['step'] = message['step'] - 1
-                elif message['step'] < 0:
-                    cad.lcd.move_right()
-                    message['step'] = message['step'] + 1
-        else:
+        seek = True
+        while seek:
+            try:
+                message = queue.get(False)
+                if message['action'] == 'store':
+                    background_queue.append(message)
+                elif message['action'] == 'clear queue':
+                    standard_queue = []
+                else:
+                    standard_queue.append(message)
+            except:
+                seek = False
+
+        message = None
+        if len(standard_queue) > 0:
+            message = standard_queue[0]
+            standard_queue = standard_queue[1:]
+        elif len(background_queue) > 0:
+            message = background_queue[0]
+            background_queue = background_queue[1:]
+
+        if message == None:
             # Avoid burning the CPU
-            print("Boo")
             time.sleep(0.2)
+        else:
+            if message['action'] == 'finish':
+                return
+            elif message['action'] == 'write':
+                cad.lcd.set_cursor(message['pos'][0], message['pos'][1])
+                m = ''
+                if m != None:
+                    m = str(message['text'])
+                text_len = len(m)
+                if ( message['pos'][0] + text_len < line_length[message['pos'][1]]
+                     and 'blank' in message and message['blank'] ):
+                    ln = line_length[message['pos'][1]] - message['pos'][0]
+                    line_length[message['pos'][1]] = message['pos'][0] + text_len 
+                else:
+                    ln = text_len 
+                    new_ln = message['pos'][0] + len(m)
+                    if new_ln > line_length[message['pos'][1]]:
+                       line_length[message['pos'][1]] = new_ln
+                cad.lcd.write(('{:<' + str(ln) + '}').format(m))
+            elif message['action'] == 'store':
+                cad.lcd.store_custom_bitmap(message['bitmap'], message['lines'])
+            elif message['action'] == 'bitmap':
+                cad.lcd.set_cursor(message['pos'][0], message['pos'][1])
+                cad.lcd.write_custom_bitmap( message['bitmap'] )
+            elif message['action'] == 'clear':
+                cad.lcd.clear()
+            elif message['action'] == 'scroll':
+                while message['step'] != 0:
+                    if message['step'] > 0:
+                        cad.lcd.move_left()
+                        message['step'] = message['step'] - 1
+                    elif message['step'] < 0:
+                        cad.lcd.move_right()
+                        message['step'] = message['step'] + 1

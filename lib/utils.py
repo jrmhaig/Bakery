@@ -123,11 +123,8 @@ def disk_image_list(*sources):
                 # Reverse before split to get cut into only 3 parts from the
                 # right. The things to match are therefore then all reversed.
                 spl = fl[::-1].split('.',2)
-                print(spl)
                 key = pth + '/' + spl[-1][::-1]
-                print("key", key)
                 if len(spl) == 3:
-                    print("2")
                     if key not in file_groups:
                         file_groups[key] = { 'post': [], 'file_format': None }
                     if spl[1] == 'tsop':
@@ -135,7 +132,6 @@ def disk_image_list(*sources):
                     elif spl[1] == 'gmi' and spl[0] == 'zg':
                         file_groups[key]['file_format'] = 'img.gz'
                 elif len(spl) == 2:
-                    print("1")
                     if key not in file_groups:
                         file_groups[key] = { 'post': [], 'file_format': None }
                     if spl[0] == 'gmi':
@@ -163,7 +159,6 @@ def write_image(device, image, display):
     dd = None
     size = None
     if image.file_format == 'img.gz':
-        print("One")
         fl = open(str(image), 'rb')
         fl.seek(-4, 2)
         r = fl.read()
@@ -176,7 +171,6 @@ def write_image(device, image, display):
         dd = subprocess.Popen(['dd', 'of=' + str(device), 'bs=1M'], bufsize=1, stdin=unzip.stdout, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
     elif image.file_format == 'img':
-        print("Two")
         fl = open(str(image), 'rb')
         fl.seek(0, 2)
         size = fl.tell()
@@ -184,9 +178,7 @@ def write_image(device, image, display):
         
         dd = subprocess.Popen(['dd', 'of=' + str(device), 'if=' + str(image), 'bs=1M'], bufsize=1, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     else:
-        print("Three")
         return False
-    print("Size:", size)
 
     # DD process
     # Output to a pipe to catch status updates
@@ -198,31 +190,11 @@ def write_image(device, image, display):
     print("dd PID   :", dd.pid)
     probe_sleep = 3
     next_probe = time.time()
-    #while unzip.poll() is None:
-    #    if dd.poll() is not None:
-    #        unzip.kill()
-    #        return False
-    #    if time.time() > next_probe:
-    #        dd.send_signal(signal.SIGUSR1)
-    #        next_probe = next_probe + probe_sleep
-
-    #    try:
-    #        line = dd_queue.get(timeout = 0.1)
-    #        m = re.search(r"(\d+) bytes", str(line))
-    #        if m != None:
-    #            percent = 100*int(m.group(1))/size
-    #            display.progress(percent)
-    #            print("Completed: " + str(percent) + "%")
-    #            next_probe = time.time() + 5
-    #    except:
-    #        pass
     while dd.poll() is None:
         #if dd.poll() is not None:
         #    unzip.kill()
         #    return False
         if time.time() > next_probe:
-            print("Probe:", next_probe)
-            print("Time:", time.time())
             dd.send_signal(signal.SIGUSR1)
             next_probe = next_probe + probe_sleep
 
@@ -278,7 +250,3 @@ def write_image(device, image, display):
 
     print("And finished")
     return True
-
-if __name__ == '__main__':
-    sdi = SdImages(['/home/pi/images'])
-    print(len(sdi))
