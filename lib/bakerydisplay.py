@@ -64,15 +64,13 @@ class BakeryDisplay(list):
         self.info_n = 0
         self.info_imgs = [ 'name', 'n_post_scripts' ]
 
-        ## List of images available
-        #self.images = images
+        self.system_data = [
+            self.ip_address,
+            self.cpu_temp,
+          ]
+        self.system_n = 0
 
-        # Watcher for disks & devices
-        #self.disks = disks
 
-        # Number of devices present
-        #self.n_devices = 0
-        #self.device_state = [0]*self.MAX_DEVICES
         # Send updates to display of devices
         self.updates = False
         # Whether button is pressed or not
@@ -258,17 +256,9 @@ class BakeryDisplay(list):
         """Set up the listeners for the buttons"""
 
         # Clear all listeners
-        print("Clear listeners")
         self.listener.deregister()
 
         # Settings for all displays
-        # Previous and next
-        self.listener.register( self.BUTTON_PREV,
-                                pifacecad.IODIR_FALLING_EDGE,
-                                self.prev )
-        self.listener.register( self.BUTTON_NEXT,
-                                pifacecad.IODIR_FALLING_EDGE,
-                                self.next )
         # Scroll display
         self.listener.register( self.BUTTON_SCROLL,
                                 pifacecad.IODIR_FALLING_EDGE,
@@ -282,19 +272,38 @@ class BakeryDisplay(list):
                                 self.switch_display )
 
         if self.display == self.DISPLAY_MAIN:
-            print("Setup main listeners")
+            # Previous and next
+            self.listener.register( self.BUTTON_PREV,
+                                    pifacecad.IODIR_FALLING_EDGE,
+                                    self.main_prev )
+            self.listener.register( self.BUTTON_NEXT,
+                                    pifacecad.IODIR_FALLING_EDGE,
+                                    self.main_next )
+            # Write image
             self.listener.register( self.BUTTON_WRITE,
                                     pifacecad.IODIR_FALLING_EDGE,
                                     self.pressed )
             self.listener.register( self.BUTTON_WRITE,
                                     pifacecad.IODIR_RISING_EDGE,
                                     self.released )
+
+            # Move pointer between lines
             self.listener.register( self.BUTTON_POINTER,
                                     pifacecad.IODIR_FALLING_EDGE,
                                     self.switch_pointer )
+
+            # Show further information
             self.listener.register( self.BUTTON_INFO,
                                     pifacecad.IODIR_FALLING_EDGE,
                                     self.show_info )
+        elif self.display == self.DISPLAY_SYSTEM:
+            # Previous and next
+            self.listener.register( self.BUTTON_PREV,
+                                    pifacecad.IODIR_FALLING_EDGE,
+                                    self.system_prev )
+            self.listener.register( self.BUTTON_NEXT,
+                                    pifacecad.IODIR_FALLING_EDGE,
+                                    self.system_next )
 
     def progress(self, percent):
         """Display the progress
@@ -343,13 +352,13 @@ class BakeryDisplay(list):
         else:
             self.write_queue.put( { 'action': 'write',
                                     'blank': 1,
-                                    'pos': [self.IMG_X,0],
-                                    'text': "Status menu" } )
-            #self.info_line()
+                                    'pos': [0,0],
+                                    'text': "System status" } )
+            self.show_system_data()
 
-    #def info_line(self, rewrite=False):
-    #    """Write the second line of the screen"""
-    #    self.info_procs[self.info_n](rewrite)
+    def show_system_data(self, rewrite=False):
+        """Write the second line of the screen"""
+        self.system_data[self.system_n](rewrite)
 
     #def post_scripts_line(self, rewrite=False):
     #    """Display information about the post scripts"""
@@ -362,22 +371,22 @@ class BakeryDisplay(list):
     #                            'text': fmt.format(n),
     #                            'blank': 1 } )
 
-    #def ip_line(self, rewrite=False):
-    #    """Display the IP address"""
-    #    ip_addr = subprocess.check_output("hostname --all-ip-addresses", shell=True).decode('utf-8')[:-1]
-    #    if ip_addr == '':
-    #        ip_addr = 'No IP address'
-    #    self.write_queue.put( { 'action': 'write', 'pos': [self.INFO_X,1], 'text': ip_addr, 'blank': 1 } )
+    def ip_address(self, rewrite=False):
+        """Display the IP address"""
+        ip_addr = subprocess.check_output("hostname --all-ip-addresses", shell=True).decode('utf-8')[:-1]
+        if ip_addr == '':
+            ip_addr = 'No IP address'
+        self.write_queue.put( { 'action': 'write', 'pos': [0, 1], 'text': ip_addr, 'blank': 1 } )
 
-    #def cpu_temp(self, rewrite=False):
-    #    """Display the CPU temperature"""
-    #    cpu_temp = subprocess.check_output("/opt/vc/bin/vcgencmd measure_temp", shell=True).decode('utf-8')[:-1]
-    #    m = re.search(r"temp=(.+)",cpu_temp)
-    #    if m == None or m.group(1) == '':
-    #        message = 'Cannot get temperature'
-    #    else:
-    #        message = m.group(1)
-    #    self.write_queue.put( { 'action': 'write', 'pos': [self.INFO_X,1], 'text': message, 'blank': 1 } )
+    def cpu_temp(self, rewrite=False):
+        """Display the CPU temperature"""
+        cpu_temp = subprocess.check_output("/opt/vc/bin/vcgencmd measure_temp", shell=True).decode('utf-8')[:-1]
+        m = re.search(r"temp=(.+)",cpu_temp)
+        if m == None or m.group(1) == '':
+            message = 'Cannot get temperature'
+        else:
+            message = m.group(1)
+        self.write_queue.put( { 'action': 'write', 'pos': [0, 1], 'text': message, 'blank': 1 } )
 
     #def devices_line(self, rewrite=False):
     #    """Display the devices line on the LCD"""
@@ -456,7 +465,9 @@ class BakeryDisplay(list):
                 # Avoid burning the CPU
                 time.sleep(0.2)
 
-    def prev(self, event):
+    # Functions for left and right rocker switch
+
+    def main_prev(self, event):
         self.info_n = 0
         if self.pointer_pos == 0:
             img = self.main_lines[0]['source'].prev().name
@@ -468,7 +479,7 @@ class BakeryDisplay(list):
             drive = self.main_lines[1]['source'].prev()
             self.show_device()
 
-    def next(self, event):
+    def main_next(self, event):
         self.info_n = 0
         if self.pointer_pos == 0:
             img = self.main_lines[0]['source'].next().name
@@ -479,6 +490,18 @@ class BakeryDisplay(list):
         elif self.pointer_pos == 1:
             drive = self.main_lines[1]['source'].next()
             self.show_device()
+
+    def system_prev(self, event):
+        self.system_n -= 1
+        if self.system_n < 0:
+            self.system_n = self.system_data
+        self.show_system_data()
+
+    def system_next(self, event):
+        self.system_n += 1
+        if self.system_n >= len(self.system_data):
+            self.system_n = 0
+        self.show_system_data()
 
     def show_device_state(self):
         if self.main_lines[1]['source'].current() != None and self.main_lines[1]['source'].current().present:
@@ -555,6 +578,7 @@ def _lcd_writer(queue):
 
     while True:
         message = queue.get()
+        print("Message is a", type(message))
         if message['action'] == 'finish':
             return
         elif message['action'] == 'write':
@@ -590,4 +614,5 @@ def _lcd_writer(queue):
                     message['step'] = message['step'] + 1
         else:
             # Avoid burning the CPU
+            print("Boo")
             time.sleep(0.2)
