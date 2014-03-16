@@ -9,9 +9,10 @@ import time
 import pyudev
 
 class DiskImage:
-    def __init__(self, filepath, post):
+    def __init__(self, filepath, file_format, post):
         self.name = os.path.basename(filepath)
         self.directory = os.path.dirname(filepath)
+        self.file_format = file_format
         self.post = list(map( lambda x :
                                 self.directory + '/' + self.name + '.post.' + x,
                                 sorted(post) ) )
@@ -29,10 +30,18 @@ class DiskImage:
             return 1
 
     def __str__(self):
-        return self.directory + '/' + self.name + '.img.gz'
+        return self.directory + '/' + self.name + '.' + self.file_format
 
     def post_scripts(self):
         return self.post
+
+    def info(self, key):
+        if key == 'name':
+            return self.name
+        elif key == 'n_post_scripts':
+            return "{0} post scripts".format(len(self.post))
+        else:
+            return "Unknown key"
 
 class Drive:
     def __init__(self, path, model):
@@ -43,9 +52,16 @@ class Drive:
     def __str__(self):
         return self.model
 
-
     def path(self):
         return self.path
+
+    def info(self, key):
+        if key == 'model':
+            return self.model
+        elif key == 'node_path':
+            return self.path
+        else:
+            return "Unknown key"
 
 class SelectList(list):
     """ Select List
@@ -113,16 +129,20 @@ def disk_image_list(*sources):
                 if len(spl) == 3:
                     print("2")
                     if key not in file_groups:
-                        file_groups[key] = { 'post': [] }
+                        file_groups[key] = { 'post': [], 'file_format': None }
                     if spl[1] == 'tsop':
                         file_groups[key]['post'].append(spl[0][::-1])
                     elif spl[1] == 'gmi' and spl[0] == 'zg':
-                        file_groups[key]['format'] = 'img.gz'
+                        file_groups[key]['file_format'] = 'img.gz'
                 elif len(spl) == 2:
                     print("1")
-                    pass
+                    if key not in file_groups:
+                        file_groups[key] = { 'post': [], 'file_format': None }
+                    if spl[0] == 'gmi':
+                        file_groups[key]['file_format'] = 'img'
     for key in file_groups:
-        images.append( DiskImage( key, file_groups[key]['post'] ) )
+        if file_groups[key]['file_format'] != None:
+            images.append( DiskImage( key, file_groups[key]['file_format'], file_groups[key]['post'] ) )
     images.sort()
     return images
 
@@ -136,34 +156,73 @@ def read_pipe(out, queue):
 def write_image(device, image, display):
     """Write the image to the card """
     # Uncompressed size of a gzip file is stored in the last 4 bytes
-    fl = open(str(image), 'rb')
-    fl.seek(-4, 2)
-    r = fl.read()
-    fl.close()
-    size = struct.unpack('<I', r)[0]
-
     print("Image:", str(image))
+    print("File format:", image.file_format)
 
-    # Unzip process
-    unzip = subprocess.Popen(['zcat', str(image)], stdout=subprocess.PIPE)
+    unzip = None
+    dd = None
+    size = None
+    if image.file_format == 'img.gz':
+        print("One")
+        fl = open(str(image), 'rb')
+        fl.seek(-4, 2)
+        r = fl.read()
+        fl.close()
+        size = struct.unpack('<I', r)[0]
+
+        # Unzip process
+        unzip = subprocess.Popen(['zcat', str(image)], stdout=subprocess.PIPE)
+        print("unzip PID:", unzip.pid)
+        dd = subprocess.Popen(['dd', 'of=' + str(device), 'bs=1M'], bufsize=1, stdin=unzip.stdout, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+
+    elif image.file_format == 'img':
+        print("Two")
+        fl = open(str(image), 'rb')
+        fl.seek(0, 2)
+        size = fl.tell()
+        fl.close()
+        
+        dd = subprocess.Popen(['dd', 'of=' + str(device), 'if=' + str(image), 'bs=1M'], bufsize=1, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    else:
+        print("Three")
+        return False
+    print("Size:", size)
 
     # DD process
     # Output to a pipe to catch status updates
-    dd = subprocess.Popen(['dd', 'of=' + str(device), 'bs=1M'], bufsize=1, stdin=unzip.stdout, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     dd_queue = queue.Queue()
     dd_thread = threading.Thread(target = read_pipe, args=(dd.stdout, dd_queue))
     dd_thread.daemon = True
     dd_thread.start()
 
-    print("unzip PID:", unzip.pid)
     print("dd PID   :", dd.pid)
-    probe_sleep = 20
+    probe_sleep = 3
     next_probe = time.time()
-    while unzip.poll() is None:
-        if dd.poll() is not None:
-            unzip.kill()
-            return False
+    #while unzip.poll() is None:
+    #    if dd.poll() is not None:
+    #        unzip.kill()
+    #        return False
+    #    if time.time() > next_probe:
+    #        dd.send_signal(signal.SIGUSR1)
+    #        next_probe = next_probe + probe_sleep
+
+    #    try:
+    #        line = dd_queue.get(timeout = 0.1)
+    #        m = re.search(r"(\d+) bytes", str(line))
+    #        if m != None:
+    #            percent = 100*int(m.group(1))/size
+    #            display.progress(percent)
+    #            print("Completed: " + str(percent) + "%")
+    #            next_probe = time.time() + 5
+    #    except:
+    #        pass
+    while dd.poll() is None:
+        #if dd.poll() is not None:
+        #    unzip.kill()
+        #    return False
         if time.time() > next_probe:
+            print("Probe:", next_probe)
+            print("Time:", time.time())
             dd.send_signal(signal.SIGUSR1)
             next_probe = next_probe + probe_sleep
 
@@ -174,7 +233,9 @@ def write_image(device, image, display):
                 percent = 100*int(m.group(1))/size
                 display.progress(percent)
                 print("Completed: " + str(percent) + "%")
-                next_probe = time.time() + 5
+                # In case it has hung and recovered
+                while time.time() > next_probe:
+                    next_probe = next_probe + probe_sleep
         except:
             pass
 

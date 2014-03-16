@@ -109,9 +109,9 @@ Images are found in /home/pi/images and should be gzipped.
 ### Controls
 
 * *Button 1:* Switch active line on display
-* *Button 5:* Scroll display
+* *Button 3:* Scroll display
+* *Button 4:* Hold for 5 seconds to write currently displayed image
 * *Rocker left/right:* Move between options
-* *Rocker button:* Hold for 5 seconds to write currently displayed image
 
 ## Images
 
