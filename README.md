@@ -134,6 +134,13 @@ Images are found in /home/pi/images and should be gzipped.
 #### Load image view
 
 * *Button 2:* Change to information view (below)
+* *Button 5:* Scan selected device
+* *Rocker left/right:* Move between devices
+
+##### After scanning
+
+* *Button 2:* Copy found image
+* *Button 3:* Do not copy found image
 
 #### System information view
 
