@@ -7,6 +7,7 @@ import queue
 import threading
 import time
 import pyudev
+import tempfile
 
 class DiskImage:
     def __init__(self, filepath, file_format, post, variables):
@@ -275,3 +276,37 @@ def write_image(device, image, display):
 
     print("And finished")
     return True
+
+def get_device_partitions(device):
+    partitions = []
+    for partition in pyudev.Context().list_devices(subsystem='block', DEVTYPE='partition'):
+        node = partition.device_node
+        if re.search(r"{}".format(str(device)), node):
+            partitions.append(node)
+    return partitions
+
+def mount(path):
+    directory = tempfile.mkdtemp()
+    try:
+        subprocess.check_call(["mount", path, directory])
+        return directory
+    except CalledProcessError:
+        return False
+
+def umount(directory):
+    try:
+        subprocess.check_call(["umount", directory])
+        os.rmdir(directory)
+        return True
+    except CalledProcessError:
+        return False
+
+def scan(path):
+    images = {}
+    for root, dirs, files in os.walk(path, topdown=False):
+        for name in files:
+            m = re.search(r"^(.+).img.gz$", str(name))
+            if m != None:
+                images[root] = m.group(1)
+
+    return images

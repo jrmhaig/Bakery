@@ -13,16 +13,15 @@ config_files = [
 config = configparser.ConfigParser()
 config.read( config_files )
 
-# Get the list of images
+# Get image directory
 dirs = config.get('images', 'source')
-images = utils.disk_image_list(dirs)
 
 # Listen for disks
 disks = diskdetector.DiskEventListener()
 disks.activate()
 
 # Set up the display
-display = bakerydisplay.BakeryDisplay(disks, images, utils.write_image)
+display = bakerydisplay.BakeryDisplay(disks, dirs, utils.write_image)
 
 # Run the main loop
 display.menu()

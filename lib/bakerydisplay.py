@@ -7,6 +7,8 @@ import os.path
 import socket
 import subprocess
 import re
+import lib.utils as utils
+import distutils.dir_util
 
 class BakeryDisplay(list):
 
@@ -33,8 +35,12 @@ class BakeryDisplay(list):
     # Buttons
     BUTTON_POINTER = 0
     BUTTON_SELECT_DISPLAY = 1
+    BUTTON_COPY_Y = 1
+    BUTTON_COPY_N = 2
     BUTTON_SCROLL = 3
-    BUTTON_WRITE = 4
+    BUTTON_WRITE = 4     # For main view
+    BUTTON_SCAN = 4      # For load view
+    BUTTON_EXECUTE = 4   # For system view
     BUTTON_INFO = 5
     BUTTON_PREV = 6
     BUTTON_NEXT = 7
@@ -43,18 +49,20 @@ class BakeryDisplay(list):
     DISPLAY_MAIN = 0
     DISPLAY_LOAD = 1
     DISPLAY_SYSTEM = 2
+    DISPLAY_LOAD_YN = 98
     DISPLAY_WRITING = 99
     DISPLAY_FIRST = DISPLAY_MAIN
     DISPLAY_LAST = DISPLAY_SYSTEM
 
-    def __init__(self, disks, images, write_function):
+    def __init__(self, disks, source_dir, write_function):
         # Callback function for writing to the device
         self.write_function = write_function
+        self.source_dir = source_dir
 
         self.disks = disks
         self.main_lines = [
             {
-              'source': images,
+              'source': utils.disk_image_list(self.source_dir),
               'info': [ 'name', 'n_post_scripts', 'n_variables' ],
               'x': 1,
             },
@@ -76,6 +84,7 @@ class BakeryDisplay(list):
         self.system_data = [
             self.ip_address,
             self.cpu_temp,
+            self.storage,
             self.shutdown,
             self.reboot,
           ]
@@ -168,6 +177,8 @@ class BakeryDisplay(list):
                                     'pos': [0, 0],
                                     'text': 'No disk present ' } )
             self.press_start = -1
+            time.sleep(3)
+            self.refresh()
         else:
             self.press_start = time.time()
             self.is_pressed = True
@@ -313,19 +324,15 @@ class BakeryDisplay(list):
         self.listener.deregister()
 
         # Settings for all displays
-        # Switch through displays
-        self.listener.register( self.BUTTON_SELECT_DISPLAY,
+        # Scroll display
+        self.listener.register( self.BUTTON_SCROLL,
                                 pifacecad.IODIR_FALLING_EDGE,
-                                self.switch_display )
+                                self.scroll_on )
+        self.listener.register( self.BUTTON_SCROLL,
+                                pifacecad.IODIR_RISING_EDGE,
+                                self.scroll_off )
 
         if self.display == self.DISPLAY_MAIN:
-            # Scroll display
-            self.listener.register( self.BUTTON_SCROLL,
-                                    pifacecad.IODIR_FALLING_EDGE,
-                                    self.scroll_on )
-            self.listener.register( self.BUTTON_SCROLL,
-                                    pifacecad.IODIR_RISING_EDGE,
-                                    self.scroll_off )
             # Previous and next
             self.listener.register( self.BUTTON_PREV,
                                     pifacecad.IODIR_FALLING_EDGE,
@@ -351,6 +358,11 @@ class BakeryDisplay(list):
                                     pifacecad.IODIR_FALLING_EDGE,
                                     self.show_info )
 
+            # Switch through displays
+            self.listener.register( self.BUTTON_SELECT_DISPLAY,
+                                    pifacecad.IODIR_FALLING_EDGE,
+                                    self.switch_display )
+
         elif self.display == self.DISPLAY_LOAD:
             # Previous and next
             self.listener.register( self.BUTTON_PREV,
@@ -359,15 +371,32 @@ class BakeryDisplay(list):
             self.listener.register( self.BUTTON_NEXT,
                                     pifacecad.IODIR_FALLING_EDGE,
                                     self.load_next )
+            # Scan partitions
+            self.listener.register( self.BUTTON_SCAN,
+                                    pifacecad.IODIR_FALLING_EDGE,
+                                    self.scan_device )
+
+            # Switch through displays
+            self.listener.register( self.BUTTON_SELECT_DISPLAY,
+                                    pifacecad.IODIR_FALLING_EDGE,
+                                    self.switch_display )
+
+        elif self.display == self.DISPLAY_LOAD_YN:
+            print("Setting listeners")
+            # Copy or pass on an image
+            self.listener.register( self.BUTTON_COPY_Y,
+                                    pifacecad.IODIR_FALLING_EDGE,
+                                    self.copy_image )
+            self.listener.register( self.BUTTON_COPY_N,
+                                    pifacecad.IODIR_FALLING_EDGE,
+                                    self.pass_image )
+            # Scan partitions
+            self.listener.register( self.BUTTON_SCAN,
+                                    pifacecad.IODIR_FALLING_EDGE,
+                                    self.scan_device )
+            print(self.listener.pin_function_maps)
 
         elif self.display == self.DISPLAY_SYSTEM:
-            # Scroll display
-            self.listener.register( self.BUTTON_SCROLL,
-                                    pifacecad.IODIR_FALLING_EDGE,
-                                    self.scroll_on )
-            self.listener.register( self.BUTTON_SCROLL,
-                                    pifacecad.IODIR_RISING_EDGE,
-                                    self.scroll_off )
             # Previous and next
             self.listener.register( self.BUTTON_PREV,
                                     pifacecad.IODIR_FALLING_EDGE,
@@ -376,12 +405,17 @@ class BakeryDisplay(list):
                                     pifacecad.IODIR_FALLING_EDGE,
                                     self.system_next )
             # System action
-            self.listener.register( self.BUTTON_WRITE,
+            self.listener.register( self.BUTTON_EXECUTE,
                                     pifacecad.IODIR_FALLING_EDGE,
                                     self.system_pressed )
-            self.listener.register( self.BUTTON_WRITE,
+            self.listener.register( self.BUTTON_EXECUTE,
                                     pifacecad.IODIR_RISING_EDGE,
                                     self.system_released )
+
+            # Switch through displays
+            self.listener.register( self.BUTTON_SELECT_DISPLAY,
+                                    pifacecad.IODIR_FALLING_EDGE,
+                                    self.switch_display )
 
         elif self.display == self.DISPLAY_WRITING:
             # No listeners during writing
@@ -475,6 +509,11 @@ class BakeryDisplay(list):
             message = m.group(1)
         self.write_queue.put( { 'action': 'write', 'pos': [0, 1], 'text': message, 'blank': 1 } )
 
+    def storage(self, rewrite=False):
+        """Display storage information"""
+        self.system_action = None
+        self.write_queue.put( { 'action': 'write', 'pos': [0, 1], 'text': "Don't know yet", 'blank': 1 } )
+
     def shutdown(self, rewrite=False):
         self.system_action = 'Shutdown'
         self.write_queue.put( { 'action': 'write', 'pos': [0, 1], 'text': 'Shutdown', 'blank': 1 } )
@@ -557,9 +596,9 @@ class BakeryDisplay(list):
         self.show_device(self.load_line['x'], 1)
 
     def system_prev(self, event):
+        if self.system_n == 0:
+            self.system_n = len(self.system_data)
         self.system_n -= 1
-        if self.system_n < 0:
-            self.system_n = self.system_data
         self.show_system_data()
 
     def system_next(self, event):
@@ -567,6 +606,68 @@ class BakeryDisplay(list):
         if self.system_n >= len(self.system_data):
             self.system_n = 0
         self.show_system_data()
+
+    def scan_device(self, event):
+        if self.disks.current() != None and self.disks.current().present:
+            self.updates = False
+            partitions = utils.get_device_partitions(self.disks.current().path)
+            self.copy_dir = None
+            tmp_listener = pifacecad.SwitchEventListener(chip=self.cad)
+            tmp_listener.register( self.BUTTON_COPY_Y,
+                                    pifacecad.IODIR_FALLING_EDGE,
+                                    self.copy_image )
+            tmp_listener.register( self.BUTTON_COPY_N,
+                                    pifacecad.IODIR_FALLING_EDGE,
+                                    self.pass_image )
+            tmp_listener.activate()
+            for partition in partitions:
+                self.write_queue.put( { 'action': 'write',
+                                        'pos': [0, 0],
+                                        'blank': 1,
+                                        'text': partition} )
+                mnt = utils.mount(partition)
+                if mnt:
+                    self.write_queue.put( { 'action': 'write',
+                                            'pos': [0, 1],
+                                            'blank': 1,
+                                            'text': "Scanning ..."} )
+                    images = utils.scan(mnt)
+                    for dir in images:
+                        self.write_queue.put( { 'action': 'write',
+                                                'pos': [0, 0],
+                                                'blank': 1,
+                                                'text': images[dir]} )
+                        self.write_queue.put( { 'action': 'write',
+                                                'pos': [0, 1],
+                                                'blank': 1,
+                                                'text': "Y N"} )
+                        self.do_copy = None
+                        while self.do_copy == None:
+                            pass
+                        if self.do_copy == 1:
+                            self.write_queue.put( { 'action': 'write',
+                                                    'pos': [0, 1],
+                                                    'blank': 1,
+                                                    'text': "Copying ..."} )
+                            # Find a nunique directory name
+                            i = 1
+                            while os.path.exists(self.source_dir + "/{0:06d}".format(i)):
+                                i+=1
+                            new_dir = self.source_dir + "/{0:06d}".format(i)
+                            os.mkdir(new_dir)
+                            distutils.dir_util.copy_tree( dir, new_dir )
+                            self.main_lines[0]['source'] = utils.disk_image_list(self.source_dir)
+                        #time.sleep(60)
+                    utils.umount(mnt)
+            tmp_listener.deactivate()
+            self.refresh()
+            self.updates = True
+
+    def copy_image(self, event):
+        self.do_copy = 1
+
+    def pass_image(self, event):
+        self.do_copy = 0
 
     def show_device_state(self, x, y):
         if self.disks.current() != None and self.disks.current().present:
