@@ -84,7 +84,9 @@ class BakeryDisplay(list):
         self.system_data = [
             self.ip_address,
             self.cpu_temp,
-            self.storage,
+            self.storage_total,
+            self.storage_used,
+            self.storage_free,
             self.shutdown,
             self.reboot,
           ]
@@ -509,10 +511,29 @@ class BakeryDisplay(list):
             message = m.group(1)
         self.write_queue.put( { 'action': 'write', 'pos': [0, 1], 'text': message, 'blank': 1 } )
 
-    def storage(self, rewrite=False):
+    def storage_used(self, rewrite=False):
         """Display storage information"""
         self.system_action = None
-        self.write_queue.put( { 'action': 'write', 'pos': [0, 1], 'text': "Don't know yet", 'blank': 1 } )
+        df = os.statvfs( self.source_dir )
+        gb = 1024.0*1024.0*1024.0
+        used = ( df.f_blocks - df.f_bfree ) * df.f_frsize / gb
+        self.write_queue.put( { 'action': 'write', 'pos': [0, 1], 'text': "{0:.1f}G used".format(used, used), 'blank': 1 } )
+
+    def storage_free(self, rewrite=False):
+        """Display storage information"""
+        self.system_action = None
+        df = os.statvfs( self.source_dir )
+        gb = 1024.0*1024.0*1024.0
+        free = df.f_bavail * df.f_frsize / gb
+        self.write_queue.put( { 'action': 'write', 'pos': [0, 1], 'text': "{0:.1f}G free".format(free, free), 'blank': 1 } )
+
+    def storage_total(self, rewrite=False):
+        """Display storage information"""
+        self.system_action = None
+        df = os.statvfs( self.source_dir )
+        gb = 1024.0*1024.0*1024.0
+        total = df.f_blocks * df.f_frsize / gb
+        self.write_queue.put( { 'action': 'write', 'pos': [0, 1], 'text': "{1:.1f}G total".format(total, total), 'blank': 1 } )
 
     def shutdown(self, rewrite=False):
         self.system_action = 'Shutdown'
