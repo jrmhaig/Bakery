@@ -185,6 +185,8 @@ The number indicates the order in which they are executed.
 
 The scripts are passed environment variable defined in the `image.var` plus:
 
+| Variable | Description |
+|----------|-------------|
 | $DEVICE     | Device path. Eg, /dev/sda |
 | $PARTITION1 | Device path of the first partition. Eg, /dev/sda1 |
 | $PARTITION2 | Device path of the second partition. Eg, /dev/sda2 |
