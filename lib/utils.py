@@ -74,6 +74,7 @@ class SelectList(list):
       * A pointer to the current item
       * A selected item of the list, which may be different from the pointer
         or None
+      * A flag to indicate that the list has been changed
 
     """
     def __init__(self):
@@ -81,6 +82,7 @@ class SelectList(list):
         list.__init__(self)
         self.pointer = 0
         self.selected = None
+        self.updated = False
 
     def next(self):
         if len(self) > 0:
@@ -115,6 +117,14 @@ class SelectList(list):
 
     def current_is_selected(self):
         return self.selected == self.pointer
+
+    def append(self, item):
+        self.updated = True
+        super().append(item)
+
+    def remove(self, item):
+        self.updated = True
+        super().remove(item)
 
 def disk_image_list(*sources):
     images = SelectList()

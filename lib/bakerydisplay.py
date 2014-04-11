@@ -602,13 +602,18 @@ class BakeryDisplay(list):
                 time.sleep(0.3)
 
             elif self.updates and (self.display == self.DISPLAY_MAIN or self.display == self.DISPLAY_LOAD):
-                # TODO Check for change of devices list
                 x = 0
                 if self.display == self.DISPLAY_MAIN:
-                    x = self.main_lines[1]['x']-1
+                    x = self.main_lines[1]['x']
                 else:
-                    x = self.load_line['x']-1
-                self.show_device_state(x, 1)
+                    x = self.load_line['x']
+
+                # TODO Check for change of devices list
+                if self.disks.updated:
+                    self.disks.updated = False
+                    self.show_device(x,1)
+
+                self.show_device_state(x-1, 1)
                 time.sleep(1)
             else:
                 # Avoid burning the CPU
