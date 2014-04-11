@@ -48,7 +48,8 @@ class BakeryDisplay(list):
     # Displays
     DISPLAY_MAIN = 0
     DISPLAY_LOAD = 1
-    DISPLAY_SYSTEM = 2
+    DISPLAY_DELETE = 2
+    DISPLAY_SYSTEM = 3
     DISPLAY_LOAD_YN = 98
     DISPLAY_WRITING = 99
     DISPLAY_FIRST = DISPLAY_MAIN
@@ -60,9 +61,10 @@ class BakeryDisplay(list):
         self.source_dir = source_dir
 
         self.disks = disks
+        self.images = utils.disk_image_list(self.source_dir)
         self.main_lines = [
             {
-              'source': utils.disk_image_list(self.source_dir),
+              'source': self.images,
               'info': [ 'name', 'n_post_scripts', 'n_variables' ],
               'x': 1,
             },
@@ -78,6 +80,12 @@ class BakeryDisplay(list):
         self.load_line = {
             'source': disks,
             'info': [ 'model', 'node_path' ],
+            'x': 1
+          }
+
+        self.delete_line = {
+            'source': self.images,
+            'info': [ 'name', 'n_post_scripts', 'n_variables' ],
             'x': 1
           }
 
@@ -383,6 +391,20 @@ class BakeryDisplay(list):
                                     pifacecad.IODIR_FALLING_EDGE,
                                     self.switch_display )
 
+        elif self.display == self.DISPLAY_DELETE:
+            # Previous and next
+            self.listener.register( self.BUTTON_PREV,
+                                    pifacecad.IODIR_FALLING_EDGE,
+                                    self.delete_prev )
+            self.listener.register( self.BUTTON_NEXT,
+                                    pifacecad.IODIR_FALLING_EDGE,
+                                    self.delete_next )
+
+            # Switch through displays
+            self.listener.register( self.BUTTON_SELECT_DISPLAY,
+                                    pifacecad.IODIR_FALLING_EDGE,
+                                    self.switch_display )
+
         elif self.display == self.DISPLAY_LOAD_YN:
             print("Setting listeners")
             # Copy or pass on an image
@@ -487,6 +509,17 @@ class BakeryDisplay(list):
                                     'text': "Load images" } )
             # Device
             self.show_device(self.load_line['x'], 1)
+
+        elif self.display == self.DISPLAY_DELETE:
+            self.write_queue.put( { 'action': 'write',
+                                    'blank': 1,
+                                    'pos': [0,0],
+                                    'text': "Delete images" } )
+            # Device
+            self.write_queue.put( { 'action': 'write',
+                                    'blank': 1,
+                                    'pos': [self.delete_line['x'],1],
+                                    'text': self.images.current().name } )
 
     def show_system_data(self, rewrite=False):
         """Write the second line of the screen"""
@@ -608,13 +641,28 @@ class BakeryDisplay(list):
             self.show_device(self.main_lines[1]['x'], 1)
 
     def load_prev(self, event):
-        self.info_n = 0
+        #self.info_n = 0
         drive = self.disks.prev()
         self.show_device(self.load_line['x'], 1)
 
     def load_next(self, event):
         drive = self.disks.next()
         self.show_device(self.load_line['x'], 1)
+
+    def delete_prev(self, event):
+        #self.info_n = 0
+        img = self.images.prev()
+        self.write_queue.put( { 'action': 'write',
+                                'blank': 1,
+                                'pos': [self.delete_line['x'],1],
+                                'text': img.name } )
+
+    def delete_next(self, event):
+        img =self.images.next()
+        self.write_queue.put( { 'action': 'write',
+                                'blank': 1,
+                                'pos': [self.delete_line['x'],1],
+                                'text': img.name } )
 
     def system_prev(self, event):
         if self.system_n == 0:
