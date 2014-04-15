@@ -84,8 +84,10 @@ class BakeryDisplay(list):
         self.display = self.DISPLAY_MAIN
 
         self.write_queue = multiprocessing.Queue()
+        self.write_answers = multiprocessing.Queue()
         self.writer = threading.Thread( target = _lcd_writer,
-                                        args = ( self.write_queue, ) )
+                                        args = ( self.write_queue,
+                                                 self.write_answers ) )
 
         self.writer.start()
 
@@ -473,7 +475,7 @@ class BakeryDisplay(list):
         self.scroll = False
         self.refresh()
 
-def _lcd_writer(queue):
+def _lcd_writer(queue, answers):
     """Write to the LCD
 
     This function is run as a background thread with a queue to avoid

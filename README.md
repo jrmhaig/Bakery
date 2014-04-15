@@ -85,11 +85,18 @@ together with any script to be executed after writing, for example:
 
     Raspbian/rbian-140107.img.gz
     Bakery/bakery.img.gz
+    Bakery/bakery.opts
     Bakery/bakery.post.1
 
-`bakery.img.gz` is a minimal image configured to run Bakery and 
-`bakery.post.1` is a script that copies some images into the correct location
-for it to use.
+* `bakery.img.gz` is a minimal image configured to run Bakery
+* `bakery.opts` is a list of options to collect, which are then passed as
+environment variables to the post install scripts
+* `bakery.post.1` is a script that copies some images into the correct location
+for it to use
+
+The `opts` file is in the format:
+
+    VARIABLE=<default value>
 
 `rbian-140107.img.gz` is Raspbian from 14/01/07 and does not require any post
 install configuration, although a script could be created to expand the file
