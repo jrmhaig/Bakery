@@ -22,6 +22,7 @@ import subprocess
 import re
 import lib.utils as utils
 import distutils.dir_util
+import shutil
 
 class BakeryDisplay(list):
 
@@ -77,7 +78,7 @@ class BakeryDisplay(list):
         self.images = utils.disk_image_list(self.source_dir)
         self.main_lines = [
             {
-              'source': self.images,
+              #'source': self.images,
               'info': [ 'name', 'n_post_scripts', 'n_variables' ],
               'x': 1,
             },
@@ -99,7 +100,7 @@ class BakeryDisplay(list):
         self.delete_line = {
             'source': self.images,
             'info': [ 'name', 'n_post_scripts', 'n_variables' ],
-            'x': 1
+            'x': 0
           }
 
         self.system_data = [
@@ -238,7 +239,8 @@ class BakeryDisplay(list):
             self.setup_controls()
 
             if self.write_function( self.main_lines[1]['source'].current().path,
-                                    self.main_lines[0]['source'].current(), self ):
+                                    #self.main_lines[0]['source'].current(), self ):
+                                    self.images.current(), self ):
                 self.write_queue.put( { 'action': 'clear' } )
                 self.write_queue.put( { 'action': 'write',
                                         'pos': [0,0],
@@ -264,6 +266,38 @@ class BakeryDisplay(list):
 
             self.updates = True
 
+        self.refresh()
+
+    def delete_pressed(self, event):
+        """Button has been pressed
+
+        Delete image
+
+        """
+        self.press_start = time.time()
+        self.is_pressed = True
+        self.countdown = self.PRESS_TIME
+        self.counter_pos = [ 3, 1 ]
+        self.write_queue.put( { 'action': 'clear queue' } )
+        self.write_queue.put( { 'action': 'write',
+                                'pos': [0, 1],
+                                'blank': 1,
+                                'text': 'in {0} secs '.format(self.PRESS_TIME) } )
+
+    def delete_released(self, event):
+        """Button has been released
+
+        Only delete the image if the button has been pressed for
+        five seconds. Otherwise, do nothing.
+
+        """
+        if not self.is_pressed:
+            # Got here by cosmic rays, or some such.
+            return None
+        self.is_pressed = False
+        if self.press_start > 0 and time.time() > self.press_start + self.PRESS_TIME:
+            shutil.rmtree(self.images.current().directory)
+            self.images = utils.disk_image_list(self.source_dir)
         self.refresh()
 
     def system_pressed(self, event):
@@ -329,7 +363,8 @@ class BakeryDisplay(list):
         key = line['info'][self.info_n]
         self.write_queue.put( { 'action': 'write',
                                 'pos': [line['x'], self.pointer_pos ],
-                                'text': line['source'].current().info(key),
+                                #'text': line['source'].current().info(key),
+                                'text': self.images.current().info(key),
                                 'blank': 1 } )
 
     def switch_display(self, event):
@@ -418,6 +453,14 @@ class BakeryDisplay(list):
                                     pifacecad.IODIR_FALLING_EDGE,
                                     self.switch_display )
 
+            # Delete image
+            self.listener.register( self.BUTTON_WRITE,
+                                    pifacecad.IODIR_FALLING_EDGE,
+                                    self.delete_pressed )
+            self.listener.register( self.BUTTON_WRITE,
+                                    pifacecad.IODIR_RISING_EDGE,
+                                    self.delete_released )
+
         elif self.display == self.DISPLAY_LOAD_YN:
             print("Setting listeners")
             # Copy or pass on an image
@@ -504,7 +547,8 @@ class BakeryDisplay(list):
             self.write_queue.put( { 'action': 'write',
                                     'blank': 1,
                                     'pos': [self.main_lines[0]['x'],0],
-                                    'text': self.main_lines[0]['source'].current().name } )
+                                    #'text': self.main_lines[0]['source'].current().name } )
+                                    'text': self.images.current().name } )
 
             # Device
             self.show_device(self.main_lines[1]['x'], 1)
@@ -527,7 +571,7 @@ class BakeryDisplay(list):
             self.write_queue.put( { 'action': 'write',
                                     'blank': 1,
                                     'pos': [0,0],
-                                    'text': "Delete images" } )
+                                    'text': "Delete image" } )
             # Device
             self.write_queue.put( { 'action': 'write',
                                     'blank': 1,
@@ -637,7 +681,8 @@ class BakeryDisplay(list):
     def main_prev(self, event):
         self.info_n = 0
         if self.pointer_pos == 0:
-            img = self.main_lines[0]['source'].prev().name
+            #img = self.main_lines[0]['source'].prev().name
+            img = self.images.prev().name
             self.write_queue.put( { 'action': 'write',
                                     'blank': 1,
                                     'pos': [self.IMG_X,0],
@@ -649,7 +694,8 @@ class BakeryDisplay(list):
     def main_next(self, event):
         self.info_n = 0
         if self.pointer_pos == 0:
-            img = self.main_lines[0]['source'].next().name
+            #img = self.main_lines[0]['source'].next().name
+            img = self.images.next().name
             self.write_queue.put( { 'action': 'write',
                                     'blank': 1,
                                     'pos': [self.IMG_X,0],
@@ -743,8 +789,8 @@ class BakeryDisplay(list):
                             new_dir = self.source_dir + "/{0:06d}".format(i)
                             os.mkdir(new_dir)
                             distutils.dir_util.copy_tree( dir, new_dir )
-                            self.main_lines[0]['source'] = utils.disk_image_list(self.source_dir)
-                        #time.sleep(60)
+                            #self.main_lines[0]['source'] = utils.disk_image_list(self.source_dir)
+                            self.images = utils.disk_image_list(self.source_dir)
                     utils.umount(mnt)
             tmp_listener.deactivate()
             self.refresh()
