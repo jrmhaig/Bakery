@@ -260,6 +260,9 @@ def write_image(device, image, display):
         except:
             pass
 
+    if dd.returncode != 0:
+        return False
+
     # Find partitions
     if len(image.get_post_scripts()) > 0:
         display.write_queue.put( { 'action': 'write',
