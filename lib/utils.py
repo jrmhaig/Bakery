@@ -7,15 +7,18 @@ import queue
 import threading
 import time
 import pyudev
+from pprint import pprint
 
 class DiskImage:
-    def __init__(self, filepath, file_format, post):
+    def __init__(self, filepath, file_format, post, variables):
         self.name = os.path.basename(filepath)
         self.directory = os.path.dirname(filepath)
         self.file_format = file_format
         self.post = list(map( lambda x :
                                 self.directory + '/' + self.name + '.post.' + x,
                                 sorted(post) ) )
+        self.variables = variables
+        pprint(self.variables)
 
     def __lt__(self, other):
         """Sorting rule
@@ -32,7 +35,7 @@ class DiskImage:
     def __str__(self):
         return self.directory + '/' + self.name + '.' + self.file_format
 
-    def post_scripts(self):
+    def get_post_scripts(self):
         return self.post
 
     def info(self, key):
@@ -40,6 +43,8 @@ class DiskImage:
             return self.name
         elif key == 'n_post_scripts':
             return "{0} post scripts".format(len(self.post))
+        elif key == 'n_variables':
+            return "{0} variables".format(len(self.variables))
         else:
             return "Unknown key"
 
@@ -124,21 +129,33 @@ def disk_image_list(*sources):
                 # right. The things to match are therefore then all reversed.
                 spl = fl[::-1].split('.',2)
                 key = pth + '/' + spl[-1][::-1]
+                if key not in file_groups:
+                    file_groups[key] = {
+                                         'post': [],
+                                         'file_format': None,
+                                         'variables': {},
+                                       }
                 if len(spl) == 3:
-                    if key not in file_groups:
-                        file_groups[key] = { 'post': [], 'file_format': None }
                     if spl[1] == 'tsop':
+                        # Post install script
                         file_groups[key]['post'].append(spl[0][::-1])
                     elif spl[1] == 'gmi' and spl[0] == 'zg':
+                        # Zipped image
                         file_groups[key]['file_format'] = 'img.gz'
                 elif len(spl) == 2:
-                    if key not in file_groups:
-                        file_groups[key] = { 'post': [], 'file_format': None }
                     if spl[0] == 'gmi':
+                        # Uncompressed image
                         file_groups[key]['file_format'] = 'img'
+                    elif spl[0] == 'srav':
+                        # Variables file
+                        vs = open(pth + '/' + fl)
+                        for line in vs:
+                            parts = line.rstrip().split(':',1)
+                            if len(parts) > 1:
+                                file_groups[key]['variables'][parts[0]] = parts[1]
     for key in file_groups:
         if file_groups[key]['file_format'] != None:
-            images.append( DiskImage( key, file_groups[key]['file_format'], file_groups[key]['post'] ) )
+            images.append( DiskImage( key, file_groups[key]['file_format'], file_groups[key]['post'], file_groups[key]['variables'] ) )
     images.sort()
     return images
 
@@ -193,6 +210,11 @@ def write_image(device, image, display):
     dd_thread.daemon = True
     dd_thread.start()
 
+    # Gather required variables
+    environment = { 'IMGDIR': image.directory }
+    for var in image.variables:
+        environment[var] = display.question(var, image.variables[var])
+
     print("dd PID   :", dd.pid)
     probe_sleep = 3
     next_probe = time.time()
@@ -218,7 +240,7 @@ def write_image(device, image, display):
             pass
 
     # Find partitions
-    if len(image.post_scripts()) > 0:
+    if len(image.get_post_scripts()) > 0:
         display.write_queue.put( { 'action': 'write',
                                 'pos': [0, 0],
                                 'text': 'Post script:',
@@ -230,7 +252,7 @@ def write_image(device, image, display):
                                 'text': 'Refresh device',
                                 'blank': 1 } )
         subprocess.call(['/home/pi/Bakery/freshen.sh', device])
-        environment = { 'IMGDIR': image.directory }
+        #environment = { 'IMGDIR': image.directory }
         pn = 1
         for partition in pyudev.Context().list_devices(subsystem='block', DEVTYPE='partition'):
             node = partition.device_node
@@ -238,7 +260,7 @@ def write_image(device, image, display):
                 environment["PARTITION{}".format(pn)] = node
                 pn = pn + 1
 
-        for script in image.post_scripts():
+        for script in image.get_post_scripts():
             script_handle = open( script, 'r' )
             # Default title - just the file name
             title = os.path.basename(script)

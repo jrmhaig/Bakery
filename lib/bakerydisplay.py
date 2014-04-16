@@ -1,4 +1,5 @@
 import pifacecad
+import pifacecad.tools
 import multiprocessing
 import threading
 import time
@@ -51,7 +52,7 @@ class BakeryDisplay(list):
         self.main_lines = [
             {
               'source': images,
-              'info': [ 'name', 'n_post_scripts' ],
+              'info': [ 'name', 'n_post_scripts', 'n_variables' ],
               'x': 1,
             },
             {
@@ -62,7 +63,6 @@ class BakeryDisplay(list):
           ]
         self.pointer_pos = 0
         self.info_n = 0
-        self.info_imgs = [ 'name', 'n_post_scripts' ]
 
         self.system_data = [
             self.ip_address,
@@ -84,10 +84,8 @@ class BakeryDisplay(list):
         self.display = self.DISPLAY_MAIN
 
         self.write_queue = multiprocessing.Queue()
-        self.write_answers = multiprocessing.Queue()
         self.writer = threading.Thread( target = _lcd_writer,
-                                        args = ( self.write_queue,
-                                                 self.write_answers ) )
+                                        args = ( self.write_queue, ) )
 
         self.writer.start()
 
@@ -475,7 +473,22 @@ class BakeryDisplay(list):
         self.scroll = False
         self.refresh()
 
-def _lcd_writer(queue, answers):
+    def question(self, label, fmt):
+        self.write_queue.put( { 'action': 'pause' } )
+
+        self.cad.lcd.clear()
+        self.cad.lcd.set_cursor(0, 0)
+        self.cad.lcd.write(label)
+        print("Zero")
+        self.cad.lcd.set_cursor(0, 1)
+        scanner = pifacecad.tools.LCDScanf(format=fmt, cad=self.cad)
+        print("One")
+        answer = scanner.scan()
+        print("Two")
+        self.write_queue.put( { 'action': 'resume' } )
+        return answer
+
+def _lcd_writer(queue):
     """Write to the LCD
 
     This function is run as a background thread with a queue to avoid
@@ -503,6 +516,12 @@ def _lcd_writer(queue, answers):
 
         'action': 'finish'        - End
 
+        'action': 'clear queue'   - Remove all items from the standard queue
+
+        'action': 'pause'         - Pause writing to the LCD
+
+        'action': 'resume'        - Resume writing to the LCD
+
     """
     cad = pifacecad.PiFaceCAD()
     cad.lcd.backlight_on()
@@ -513,12 +532,18 @@ def _lcd_writer(queue, answers):
     standard_queue = []
     background_queue = []
 
+    pause = False
+
     while True:
         seek = True
         while seek:
             try:
                 message = queue.get(False)
-                if message['action'] == 'store':
+                if message['action'] == 'pause':
+                    pause = True
+                elif message['action'] == 'resume':
+                    pause = False
+                elif message['action'] == 'store':
                     background_queue.append(message)
                 elif message['action'] == 'clear queue':
                     standard_queue = []
@@ -528,12 +553,13 @@ def _lcd_writer(queue, answers):
                 seek = False
 
         message = None
-        if len(standard_queue) > 0:
-            message = standard_queue[0]
-            standard_queue = standard_queue[1:]
-        elif len(background_queue) > 0:
-            message = background_queue[0]
-            background_queue = background_queue[1:]
+        if not pause:
+            if len(standard_queue) > 0:
+                message = standard_queue[0]
+                standard_queue = standard_queue[1:]
+            elif len(background_queue) > 0:
+                message = background_queue[0]
+                background_queue = background_queue[1:]
 
         if message == None:
             # Avoid burning the CPU
