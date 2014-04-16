@@ -359,12 +359,18 @@ class BakeryDisplay(list):
         self.info_n += 1
         if self.info_n >= len(self.main_lines[self.pointer_pos]['info']):
             self.info_n=0
-        line = self.main_lines[self.pointer_pos]
-        key = line['info'][self.info_n]
+        # Removing self.images from self.main_lines has made a mess of this
+        # TODO Tidy this up a bit
+        #line = self.main_lines[self.pointer_pos]
+        lst = None
+        if self.pointer_pos == 0:
+            lst = self.images
+        else:
+            lst = self.disks
+        key = self.main_lines[self.pointer_pos]['info'][self.info_n]
         self.write_queue.put( { 'action': 'write',
-                                'pos': [line['x'], self.pointer_pos ],
-                                #'text': line['source'].current().info(key),
-                                'text': self.images.current().info(key),
+                                'pos': [self.main_lines[self.pointer_pos]['x'], self.pointer_pos ],
+                                'text': lst.current().info(key),
                                 'blank': 1 } )
 
     def switch_display(self, event):
