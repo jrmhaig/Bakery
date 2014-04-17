@@ -158,15 +158,15 @@ Images are found in /home/pi/images and should be gzipped.
   </tr>
   <tr>
     <th>Rocker press</th>
-    <td>Display further information<td>
+    <td>Display further information</td>
     <td colspan=3><i>No action</i></td>
   </tr>
   <tr>
     <th>Rocker</th>
-    <td>Select image or device<td>
-    <td>Select device to scan<td>
-    <td>Select image to delete<td>
-    <td>Show next data or option<td>
+    <td>Select image or device</td>
+    <td>Select device to scan</td>
+    <td>Select image to delete</td>
+    <td>Show next data or option</td>
   </tr>
 </table>
 
