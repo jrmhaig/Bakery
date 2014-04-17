@@ -134,7 +134,7 @@ Images are found in /home/pi/images and should be gzipped.
   </tr>
   <tr>
     <th>1</th>
-    <td>Swith between lines</td>
+    <td>Switch between lines</td>
     <td colspan=3><i>No action</i></td>
   </tr>
   <tr>
@@ -170,41 +170,9 @@ Images are found in /home/pi/images and should be gzipped.
   </tr>
 </table>
 
-#### Main view
-
-* *Button 1:* Switch active line on display
-* *Button 2:* Change to system load image view (below)
-* *Button 4:* Scroll display
-* *Button 5:* Hold for 5 seconds to write currently displayed image
-* *Rocker left/right:* Move between options
-* *Rocker button:* Display information about selected image or device
-
-#### Load image view
-
-* *Button 2:* Change to delete image view (below)
-* *Button 4:* Scroll display
-* *Button 5:* Scan selected device
-* *Rocker left/right:* Move between devices
-
-##### After scanning
-
-* *Button 2:* Copy found image
-* *Button 3:* Do not copy found image
-
-
-#### Delete image view
-
-* *Button 2:* Change to information view (below)
-* *Button 4:* Scroll display
-* *Button 5:* Hold for 5 seconds to delete currently displayed image
-* *Rocker left/right:* Move between images
-
-#### System information view
-
-* *Button 2:* Change to main view (above)
-* *Button 3:* Scroll display
-* *Button 4:* Hold for 5 seconds to execute command (for shutdown and reboot options)
-* *Rocker left/right:* Move between options
+On the 'Load image view', after a device has been scanned, any images found
+can be selectively copied into the Bakery image store with buttons 2 (yes) and
+3 (no).
 
 ## System information
 
@@ -212,6 +180,9 @@ The system information view will display:
 
 * IP address
 * CPU temperature
+* Total image storage space
+* Used image storage space
+* Free image storage space
 
 There are options to reboot or shutdown.
 
