@@ -30,8 +30,10 @@ Did you read WARNING 1? If not, go back and read it again.
 * python3-pifacecad
 * python3-pyudev
 
-The pifacecad module must be version 4.1 or later. If 4.1 has not been released
-yet then the testing branch from Github must be used.
+The pifacecommon library from python3-pifacecad must be version 4.1.1 or
+later. At time of writing, the version that is in the Raspbian respositories
+is 4.0 so the 'testing' branch from Github should be used. Alternatively, the
+`interrupts.py` file may be replaced, as described below.
 
 ### Set up
 
@@ -69,7 +71,7 @@ Extract Bakery into:
 
     /home/pi/Bakery
 
-*Important* Until a version of the PiFace libraries newer than 4.0.0 becomes
+*Important:* Until a version of the PiFace libraries newer than 4.0.0 becomes
 available you must patch the PiFace `interrupts.py` file:
 
     cp /home/pi/Bakery/pifacecommon/interrupts.py /usr/lib/python3/dist-packages/pifacecommon/interrupts.py
@@ -122,18 +124,65 @@ Images are found in /home/pi/images and should be gzipped.
 
 ### Controls
 
+<table>
+  <tr>
+    <th>Button</th>
+    <th>Main view</th>
+    <th>Load image view</th>
+    <th>Delete image view</th>
+    <th>System status view</th>
+  </tr>
+  <tr>
+    <th>1</th>
+    <td>Swith between lines</td>
+    <td colspan=3><i>No action</i></td>
+  </tr>
+  <tr>
+    <th>2</th>
+    <td colspan=4>Next view</td>
+  </tr>
+  <tr>
+    <th>3</th>
+    <td colspan=4><i>No action</i></td>
+  </tr>
+  <tr>
+    <th>4</th>
+    <td colspan=4>Scroll display</td>
+  </tr>
+  <tr>
+    <th>5</th>
+    <td>Write image (hold for 5 seconds)</td>
+    <td>Scan selected device</td>
+    <td>Delete image (hold for 5 seconds)</td>
+    <td>Execute displayed action (hold for 5 seconds)</td>
+  </tr>
+  <tr>
+    <th>Rocker press</th>
+    <td>Display further information<td>
+    <td colspan=3><i>No action</i></td>
+  </tr>
+  <tr>
+    <th>Rocker</th>
+    <td>Select image or device<td>
+    <td>Select device to scan<td>
+    <td>Select image to delete<td>
+    <td>Show next data or option<td>
+  </tr>
+</table>
+
 #### Main view
 
 * *Button 1:* Switch active line on display
 * *Button 2:* Change to system load image view (below)
-* *Button 3:* Scroll display
-* *Button 4:* Hold for 5 seconds to write currently displayed image
+* *Button 4:* Scroll display
+* *Button 5:* Hold for 5 seconds to write currently displayed image
 * *Rocker left/right:* Move between options
 * *Rocker button:* Display information about selected image or device
 
 #### Load image view
 
-* *Button 2:* Change to information view (below)
+* *Button 2:* Change to delete image view (below)
+* *Button 4:* Scroll display
 * *Button 5:* Scan selected device
 * *Rocker left/right:* Move between devices
 
@@ -141,6 +190,14 @@ Images are found in /home/pi/images and should be gzipped.
 
 * *Button 2:* Copy found image
 * *Button 3:* Do not copy found image
+
+
+#### Delete image view
+
+* *Button 2:* Change to information view (below)
+* *Button 4:* Scroll display
+* *Button 5:* Hold for 5 seconds to delete currently displayed image
+* *Rocker left/right:* Move between images
 
 #### System information view
 
