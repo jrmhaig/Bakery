@@ -13,5 +13,7 @@ It should be put inside the Bakery directory alongside the files:
 * bakery.post.1
 * bakery.post.2
 * bakery.post.3
+* bakery.post.4
+* bakery.post.5
 
 These will do the necessary configuration.
