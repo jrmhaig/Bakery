@@ -7,7 +7,6 @@ import queue
 import threading
 import time
 import pyudev
-from pprint import pprint
 
 class DiskImage:
     def __init__(self, filepath, file_format, post, variables):
@@ -18,7 +17,6 @@ class DiskImage:
                                 self.directory + '/' + self.name + '.post.' + x,
                                 sorted(post) ) )
         self.variables = variables
-        pprint(self.variables)
 
     def __lt__(self, other):
         """Sorting rule
@@ -215,13 +213,12 @@ def write_image(device, image, display):
     for var in image.variables:
         environment[var] = display.question(var, image.variables[var])
 
+    display.progress_title()
+
     print("dd PID   :", dd.pid)
     probe_sleep = 3
     next_probe = time.time()
     while dd.poll() is None:
-        #if dd.poll() is not None:
-        #    unzip.kill()
-        #    return False
         if time.time() > next_probe:
             dd.send_signal(signal.SIGUSR1)
             next_probe = next_probe + probe_sleep

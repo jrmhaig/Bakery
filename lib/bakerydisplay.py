@@ -177,12 +177,7 @@ class BakeryDisplay(list):
         if self.press_start > 0 and time.time() > self.press_start + self.PRESS_TIME:
             self.write_queue.put( { 'action': 'clear' } )
 
-            # Top line
-            self.write_queue.put( { 'action': 'write',
-                                    'pos': [0,0],
-                                    'text': 'Complete:  0.00%' } )
-
-            # Second line
+            # Keep track of progress
             self.progress_pointer=0
 
             self.updates = False
@@ -299,6 +294,13 @@ class BakeryDisplay(list):
             self.listener.register( self.BUTTON_NEXT,
                                     pifacecad.IODIR_FALLING_EDGE,
                                     self.system_next )
+
+    def progress_title(self):
+        """Display the title for the progress bar"""
+        self.write_queue.put( { 'action': 'clear', } )
+        self.write_queue.put( { 'action': 'write',
+                                'pos': [0,0],
+                                'text': 'Complete:      %' } )
 
     def progress(self, percent):
         """Display the progress
@@ -479,14 +481,21 @@ class BakeryDisplay(list):
         self.cad.lcd.clear()
         self.cad.lcd.set_cursor(0, 0)
         self.cad.lcd.write(label)
-        print("Zero")
+
         self.cad.lcd.set_cursor(0, 1)
-        scanner = pifacecad.tools.LCDScanf(format=fmt, cad=self.cad)
-        print("One")
+        self.cad.lcd.cursor_on()
+        self.cad.lcd.blink_on()
+        if ':' in fmt:
+            (f, args) = fmt.split(':', 1)
+            scanner = pifacecad.tools.LCDScanf(format=f, custom_values=args.split(','), cad=self.cad)
+        else:
+            scanner = pifacecad.tools.LCDScanf(format=fmt, cad=self.cad)
+
         answer = scanner.scan()
-        print("Two")
+        self.cad.lcd.cursor_off()
+        self.cad.lcd.blink_off()
         self.write_queue.put( { 'action': 'resume' } )
-        return answer
+        return answer[0]
 
 def _lcd_writer(queue):
     """Write to the LCD

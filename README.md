@@ -85,7 +85,7 @@ together with any script to be executed after writing, for example:
 
     Raspbian/rbian-140107.img.gz
     Bakery/bakery.img.gz
-    Bakery/bakery.opts
+    Bakery/bakery.vars
     Bakery/bakery.post.1
 
 * `bakery.img.gz` is a minimal image configured to run Bakery
