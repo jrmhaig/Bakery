@@ -1,10 +1,8 @@
 #!/bin/bash
 #TITLE# Copy RiscOS
 
-# Make sure there is a RiskOS image available before uncommenting this
+ROOT=/tmp/bakery_partition
 
-#ROOT=/tmp/bakery_partition
-
-#mount $PARTITION3 $ROOT
-#cp -r $IMGDIR/../RiscOS $ROOT/images
-#umount $ROOT
+mount $PARTITION3 $ROOT
+cp -r $IMGDIR/../RiscOS $ROOT/images
+umount $ROOT

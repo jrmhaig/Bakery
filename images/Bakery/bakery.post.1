@@ -13,5 +13,7 @@ mount $PARTITION2 $ROOT
 mv $ROOT/home/pi/Bakery $ROOT/home/pi/old.Bakery
 cp -a /home/pi/Bakery $ROOT/home/pi/Bakery
 rm -f $ROOT/home/pi/Bakery/conf/*
+rm -f $ROOT/home/pi/Bakery/.git*
+cp $ROOT/home/pi/init.d/bakery $ROOT/etc/init.d/bakery
 
 umount $ROOT

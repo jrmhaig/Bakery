@@ -1,0 +1,11 @@
+#!/bin/bash
+#TITLE# Patch piface library
+
+ROOT=/tmp/bakery_partition
+
+mount $PARTITION2 $ROOT
+
+# TODO Check version and patch better
+cp $ROOT/home/pi/Bakery/pifacecommon/interrupts.py $ROOT/usr/lib/python3/dist-packages/pifacecommon/interrupts.py
+
+umount $ROOT

@@ -1,0 +1,32 @@
+#!/bin/bash
+#TITLE# Grow image store
+#
+# This is based on raspi-config, from Raspbian
+# Note, however, that it is written assuming that a particular image has been
+# written with the root partition as /dev/xxx2, where /dev/xxx is the device.
+
+# Images file system is number 3 (the last)
+PART_NUM=3
+# Get the starting offset of the root partition
+PART_START=`parted $DEVICE -ms unit s p | grep "^${PART_NUM}" | cut -f 2 -d:`
+[ "$PART_START" ] || return 1
+# Return value will likely be error for fdisk as it fails to reload the
+# partition table because the root fs is mounted
+  
+# Use fdisk to resize the filesystem
+fdisk $DEVICE <<EOF
+p
+d
+$PART_NUM
+n
+p
+$PART_NUM
+$PART_START
+  
+p
+w
+EOF
+  
+# Check file system and then resize
+e2fsck -p -f $PARTITION3
+resize2fs $PARTITION3
