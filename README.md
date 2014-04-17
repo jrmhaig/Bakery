@@ -237,15 +237,6 @@ The text 'Config script' will be displayed during its execution.
     echo new-hostname > /mnt/etc/hostname
     umount $PARTITION2
 
-## To do list
-
-* Devices are now detected when they are plugged in and removed. The main SD
-  writer needs to be identfied, by vendor and model ids, so that another device
-  does not accidentally get written to.
-* No easy way to copy new images on when not connected to a network. Need to
-  have a feature to use external USB storage, either writing images directly
-  from one or copying them onto the Pi.
-
 ## Longer term plans
 
 The SD card writer (and duplicator) is just the first step towards a 'control
