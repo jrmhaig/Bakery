@@ -209,7 +209,7 @@ def write_image(device, image, display):
     dd_thread.start()
 
     # Gather required variables
-    environment = { 'IMGDIR': image.directory }
+    environment = { 'IMGDIR': image.directory, 'DEVICE': str(device) }
     for var in image.variables:
         environment[var] = display.question(var, image.variables[var])
 

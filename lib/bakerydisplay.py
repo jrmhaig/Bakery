@@ -42,6 +42,7 @@ class BakeryDisplay(list):
     # Displays
     DISPLAY_MAIN = 0
     DISPLAY_SYSTEM = 1
+    DISPLAY_WRITING = 99
     DISPLAY_FIRST = DISPLAY_MAIN
     DISPLAY_LAST = DISPLAY_SYSTEM
 
@@ -67,6 +68,8 @@ class BakeryDisplay(list):
         self.system_data = [
             self.ip_address,
             self.cpu_temp,
+            self.shutdown,
+            self.reboot,
           ]
         self.system_n = 0
 
@@ -85,7 +88,7 @@ class BakeryDisplay(list):
 
         self.write_queue = multiprocessing.Queue()
         self.writer = threading.Thread( target = _lcd_writer,
-                                        args = ( self.write_queue, ) )
+                                        args = ( self.write_queue, self.cad ) )
 
         self.writer.start()
 
@@ -161,6 +164,7 @@ class BakeryDisplay(list):
             self.press_start = time.time()
             self.is_pressed = True
             self.countdown = self.PRESS_TIME
+            self.counter_pos = [ 9, 1 ]
             self.write_queue.put( { 'action': 'clear queue' } )
             self.write_queue.put( { 'action': 'write',
                                     'pos': [0, 1],
@@ -173,6 +177,9 @@ class BakeryDisplay(list):
         five seconds. Otherwise, do nothing.
 
         """
+        if not self.is_pressed:
+            # Got here by cosmic rays, or some such.
+            return None
         self.is_pressed = False
         if self.press_start > 0 and time.time() > self.press_start + self.PRESS_TIME:
             self.write_queue.put( { 'action': 'clear' } )
@@ -183,8 +190,13 @@ class BakeryDisplay(list):
             self.updates = False
 
             start_time = time.time()
+
+            # Turn off listeners while writing
+            self.display == self.DISPLAY_WRITING
+            self.setup_controls()
+
             if self.write_function( self.main_lines[1]['source'].current().path,
-                                        self.main_lines[0]['source'].current(), self ):
+                                    self.main_lines[0]['source'].current(), self ):
                 self.write_queue.put( { 'action': 'clear' } )
                 self.write_queue.put( { 'action': 'write',
                                         'pos': [0,0],
@@ -203,10 +215,54 @@ class BakeryDisplay(list):
                                         'text': 'Try again' } )
 
             time.sleep(5)
-            self.refresh()
+
+            # Turn listeners back on
+            self.display == self.DISPLAY_MAIN
+            self.setup_controls()
+
             self.updates = True
-        else:
-            self.refresh()
+
+        self.refresh()
+
+    def system_pressed(self, event):
+        """Button has been pressed
+
+        System actions
+
+        """
+        if self.system_action:
+            self.press_start = time.time()
+            self.is_pressed = True
+            self.countdown = self.PRESS_TIME
+            self.counter_pos = [ 3, 1 ]
+            self.write_queue.put( { 'action': 'clear queue' } )
+            self.write_queue.put( { 'action': 'write',
+                                    'pos': [0, 0],
+                                    'blank': 1,
+                                    'text': self.system_action } )
+            self.write_queue.put( { 'action': 'write',
+                                    'pos': [0, 1],
+                                    'blank': 1,
+                                    'text': 'in {0} secs '.format(self.PRESS_TIME) } )
+
+    def system_released(self, event):
+        """Button has been released
+
+        Only call the system action if the button has been pressed for
+        five seconds. Otherwise, do nothing.
+
+        """
+        if not self.is_pressed:
+            # Got here by cosmic rays, or some such.
+            return None
+        self.is_pressed = False
+        if self.press_start > 0 and time.time() > self.press_start + self.PRESS_TIME:
+            if self.system_action == 'Shutdown':
+                subprocess.call(['shutdown', '-h', 'now'])
+            elif self.system_action == 'Reboot':
+                subprocess.call(['shutdown', '-r', 'now'])
+
+        self.refresh()
 
     def switch_pointer(self, event):
         """Switch the pointer between lines"""
@@ -249,19 +305,19 @@ class BakeryDisplay(list):
         self.listener.deregister()
 
         # Settings for all displays
-        # Scroll display
-        self.listener.register( self.BUTTON_SCROLL,
-                                pifacecad.IODIR_FALLING_EDGE,
-                                self.scroll_on )
-        self.listener.register( self.BUTTON_SCROLL,
-                                pifacecad.IODIR_RISING_EDGE,
-                                self.scroll_off )
-        # Switch through displays
-        self.listener.register( self.BUTTON_SELECT_DISPLAY,
-                                pifacecad.IODIR_FALLING_EDGE,
-                                self.switch_display )
 
         if self.display == self.DISPLAY_MAIN:
+            # Scroll display
+            self.listener.register( self.BUTTON_SCROLL,
+                                    pifacecad.IODIR_FALLING_EDGE,
+                                    self.scroll_on )
+            self.listener.register( self.BUTTON_SCROLL,
+                                    pifacecad.IODIR_RISING_EDGE,
+                                    self.scroll_off )
+            # Switch through displays
+            self.listener.register( self.BUTTON_SELECT_DISPLAY,
+                                    pifacecad.IODIR_FALLING_EDGE,
+                                    self.switch_display )
             # Previous and next
             self.listener.register( self.BUTTON_PREV,
                                     pifacecad.IODIR_FALLING_EDGE,
@@ -287,6 +343,17 @@ class BakeryDisplay(list):
                                     pifacecad.IODIR_FALLING_EDGE,
                                     self.show_info )
         elif self.display == self.DISPLAY_SYSTEM:
+            # Scroll display
+            self.listener.register( self.BUTTON_SCROLL,
+                                    pifacecad.IODIR_FALLING_EDGE,
+                                    self.scroll_on )
+            self.listener.register( self.BUTTON_SCROLL,
+                                    pifacecad.IODIR_RISING_EDGE,
+                                    self.scroll_off )
+            # Switch through displays
+            self.listener.register( self.BUTTON_SELECT_DISPLAY,
+                                    pifacecad.IODIR_FALLING_EDGE,
+                                    self.switch_display )
             # Previous and next
             self.listener.register( self.BUTTON_PREV,
                                     pifacecad.IODIR_FALLING_EDGE,
@@ -294,6 +361,17 @@ class BakeryDisplay(list):
             self.listener.register( self.BUTTON_NEXT,
                                     pifacecad.IODIR_FALLING_EDGE,
                                     self.system_next )
+            # System action
+            self.listener.register( self.BUTTON_WRITE,
+                                    pifacecad.IODIR_FALLING_EDGE,
+                                    self.system_pressed )
+            self.listener.register( self.BUTTON_WRITE,
+                                    pifacecad.IODIR_RISING_EDGE,
+                                    self.system_released )
+
+        elif self.display == self.DISPLAY_WRITING:
+            # No listeners during writing
+            pass
 
     def progress_title(self):
         """Display the title for the progress bar"""
@@ -359,6 +437,7 @@ class BakeryDisplay(list):
 
     def ip_address(self, rewrite=False):
         """Display the IP address"""
+        self.system_action = None
         ip_addr = subprocess.check_output("hostname --all-ip-addresses", shell=True).decode('utf-8')[:-1]
         if ip_addr == '':
             ip_addr = 'No IP address'
@@ -366,6 +445,7 @@ class BakeryDisplay(list):
 
     def cpu_temp(self, rewrite=False):
         """Display the CPU temperature"""
+        self.system_action = None
         cpu_temp = subprocess.check_output("/opt/vc/bin/vcgencmd measure_temp", shell=True).decode('utf-8')[:-1]
         m = re.search(r"temp=(.+)",cpu_temp)
         if m == None or m.group(1) == '':
@@ -373,6 +453,14 @@ class BakeryDisplay(list):
         else:
             message = m.group(1)
         self.write_queue.put( { 'action': 'write', 'pos': [0, 1], 'text': message, 'blank': 1 } )
+
+    def shutdown(self, rewrite=False):
+        self.system_action = 'Shutdown'
+        self.write_queue.put( { 'action': 'write', 'pos': [0, 1], 'text': 'Shutdown', 'blank': 1 } )
+
+    def reboot(self, rewrite=False):
+        self.system_action = 'Reboot'
+        self.write_queue.put( { 'action': 'write', 'pos': [0, 1], 'text': 'Reboot', 'blank': 1 } )
 
     def menu(self):
         # TODO Use this to have an exit button
@@ -385,13 +473,14 @@ class BakeryDisplay(list):
         self.listener.activate()
 
         while self.finish == 0:
-            if self.is_pressed and self.display == self.DISPLAY_MAIN:
+            #if self.is_pressed and self.display == self.DISPLAY_MAIN:
+            if self.is_pressed:
                 if (self.press_start > 0 and
                     self.countdown > 0 and
                     int(time.time() - self.press_start) > self.PRESS_TIME - self.countdown):
                     self.countdown = self.countdown - 1
                     self.write_queue.put( { 'action': 'write',
-                                            'pos': [9, 1],
+                                            'pos': self.counter_pos,
                                             'text': str(self.countdown) } )
 
             elif self.scroll:
@@ -497,7 +586,7 @@ class BakeryDisplay(list):
         self.write_queue.put( { 'action': 'resume' } )
         return answer[0]
 
-def _lcd_writer(queue):
+def _lcd_writer(queue, cad):
     """Write to the LCD
 
     This function is run as a background thread with a queue to avoid
@@ -532,7 +621,7 @@ def _lcd_writer(queue):
         'action': 'resume'        - Resume writing to the LCD
 
     """
-    cad = pifacecad.PiFaceCAD()
+    #cad = pifacecad.PiFaceCAD()
     cad.lcd.backlight_on()
     cad.lcd.cursor_off()
     cad.lcd.blink_off()
