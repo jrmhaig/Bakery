@@ -35,7 +35,10 @@ yet then the testing branch from Github must be used.
 
 ### Set up
 
-A minimal Linux distribution can be found here:
+A Debian Squeeze based distribution must be used as the PiFace libraries are
+not currently available for others. Raspbian may be used but Moebius is
+recommended to maximise the available disk space for images. Moebius may be
+downloaded from here:
 
 * http://moebiuslinux.sourceforge.net/
 
@@ -57,11 +60,19 @@ Enable SPI by removing this line from /etc/modprobe.d/raspi-blacklist.conf:
 
     blacklist spi-bcm2708
 
+It is recommended that you do _not_ expand the root filesystem but instead
+create a separate partition for the storage of images.
+
 Reboot to enable the SPI module and PiFace CAD.
 
 Extract Bakery into:
 
     /home/pi/Bakery
+
+*Important* Until a version of the PiFace libraries newer than 4.0.0 becomes
+available you must patch the PiFace `interrupts.py` file:
+
+    cp /home/pi/Bakery/pifacecommon/interrupts.py /usr/lib/python3/dist-packages/pifacecommon/interrupts.py
 
 Either start Bakery manually, as shown in the 'Operation' section below, or
 set it to start on boot by copying the file:
@@ -71,6 +82,7 @@ set it to start on boot by copying the file:
 to `/etc/init.d`, making sure that it is executable, and running:
 
     sudo update-rc.d bakery defaults
+
 
 ## Configuration
 
@@ -89,21 +101,16 @@ together with any script to be executed after writing, for example:
     Bakery/bakery.post.1
 
 * `bakery.img.gz` is a minimal image configured to run Bakery
-* `bakery.opts` is a list of options to collect, which are then passed as
+* `bakery.vars` is a list of options to collect, which are then passed as
 environment variables to the post install scripts
 * `bakery.post.1` is a script that copies some images into the correct location
 for it to use
 
-The `opts` file is in the format:
+The `opts` file comprises line in the format:
 
     VARIABLE=<default value>
 
-`rbian-140107.img.gz` is Raspbian from 14/01/07 and does not require any post
-install configuration, although a script could be created to expand the file
-system, for example.
-
-In the scripts the devices for the partitions are available as $PARTITION1,
-$PARTITION2, etc. The image directory is available as $IMGDIR.
+and these will be passed to all post install scripts.
 
 ## Operation
 
@@ -115,18 +122,39 @@ Images are found in /home/pi/images and should be gzipped.
 
 ### Controls
 
+#### Main view
+
 * *Button 1:* Switch active line on display
+* *Button 2:* Change to system load image view (below)
 * *Button 3:* Scroll display
 * *Button 4:* Hold for 5 seconds to write currently displayed image
 * *Rocker left/right:* Move between options
+* *Rocker button:* Display information about selected image or device
+
+#### Load image view
+
+* *Button 2:* Change to information view (below)
+
+#### System information view
+
+* *Button 2:* Change to main view (above)
+* *Button 3:* Scroll display
+* *Button 4:* Hold for 5 seconds to execute command (for shutdown and reboot options)
+* *Rocker left/right:* Move between options
+
+## System information
+
+The system information view will display:
+
+* IP address
+* CPU temperature
+
+There are options to reboot or shutdown.
 
 ## Images
 
-Images (and only images) should be stored in the directory
-
-    /home/pi/images
-
-zipped up with:
+Images should be stored in subdirectories of the source directory defined in
+the configuration file (see above) and they should be zipped up using:
 
     gzip image.img
 
@@ -148,12 +176,13 @@ image and named consistently. For `image.img` the scripts must be called:
 
 The number indicates the order in which they are executed.
 
-The scripts have the following environment variables set:
+The scripts are passed environment variable defined in the `image.var` plus:
 
-    $IMGDIR = Directory containing the image and scripts
-    $PARTITION1 = Device of the first partition on the image
-    $PARTITION2 = Device of the second partition on the image
-    (etc)
+| $DEVICE     | Device path. Eg, /dev/sda |
+| $PARTITION1 | Device path of the first partition. Eg, /dev/sda1 |
+| $PARTITION2 | Device path of the second partition. Eg, /dev/sda2 |
+| (etc) | |
+| $IMGDIR | The directory containing the image and other related files |
 
 The title of the script is the first comment in the format:
 
@@ -173,7 +202,6 @@ The text 'Config script' will be displayed during its execution.
 
 ## To do list
 
-* Add an 'exit' button.
 * Devices are now detected when they are plugged in and removed. The main SD
   writer needs to be identfied, by vendor and model ids, so that another device
   does not accidentally get written to.

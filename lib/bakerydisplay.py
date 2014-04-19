@@ -51,6 +51,7 @@ class BakeryDisplay(list):
         # Callback function for writing to the device
         self.write_function = write_function
 
+        self.disks = disks
         self.main_lines = [
             {
               'source': images,
@@ -69,7 +70,7 @@ class BakeryDisplay(list):
         self.load_line = {
             'source': disks,
             'info': [ 'model', 'node_path' ],
-            'x': 2
+            'x': 1
           }
 
         self.system_data = [
@@ -351,7 +352,13 @@ class BakeryDisplay(list):
                                     self.show_info )
 
         elif self.display == self.DISPLAY_LOAD:
-            pass
+            # Previous and next
+            self.listener.register( self.BUTTON_PREV,
+                                    pifacecad.IODIR_FALLING_EDGE,
+                                    self.load_prev )
+            self.listener.register( self.BUTTON_NEXT,
+                                    pifacecad.IODIR_FALLING_EDGE,
+                                    self.load_next )
 
         elif self.display == self.DISPLAY_SYSTEM:
             # Scroll display
@@ -429,7 +436,7 @@ class BakeryDisplay(list):
                                     'text': self.main_lines[0]['source'].current().name } )
 
             # Device
-            self.show_device()
+            self.show_device(self.main_lines[1]['x'], 1)
 
         elif self.display == self.DISPLAY_SYSTEM:
             self.write_queue.put( { 'action': 'write',
@@ -442,10 +449,8 @@ class BakeryDisplay(list):
                                     'blank': 1,
                                     'pos': [0,0],
                                     'text': "Load images" } )
-            self.write_queue.put( { 'action': 'write',
-                                    'blank': 1,
-                                    'pos': [0,1],
-                                    'text': "TODO" } )
+            # Device
+            self.show_device(self.load_line['x'], 1)
 
     def show_system_data(self, rewrite=False):
         """Write the second line of the screen"""
@@ -489,7 +494,6 @@ class BakeryDisplay(list):
         self.listener.activate()
 
         while self.finish == 0:
-            #if self.is_pressed and self.display == self.DISPLAY_MAIN:
             if self.is_pressed:
                 if (self.press_start > 0 and
                     self.countdown > 0 and
@@ -504,9 +508,14 @@ class BakeryDisplay(list):
                                         'step': 1 } )
                 time.sleep(0.3)
 
-            elif self.updates and self.display == self.DISPLAY_MAIN:
+            elif self.updates and (self.display == self.DISPLAY_MAIN or self.display == self.DISPLAY_LOAD):
                 # TODO Check for change of devices list
-                self.show_device_state()
+                x = 0
+                if self.display == self.DISPLAY_MAIN:
+                    x = self.main_lines[1]['x']-1
+                else:
+                    x = self.load_line['x']-1
+                self.show_device_state(x, 1)
                 time.sleep(1)
             else:
                 # Avoid burning the CPU
@@ -523,8 +532,8 @@ class BakeryDisplay(list):
                                     'pos': [self.IMG_X,0],
                                     'text': img } )
         elif self.pointer_pos == 1:
-            drive = self.main_lines[1]['source'].prev()
-            self.show_device()
+            drive = self.disks.prev()
+            self.show_device(self.main_lines[1]['x'], 1)
 
     def main_next(self, event):
         self.info_n = 0
@@ -535,8 +544,17 @@ class BakeryDisplay(list):
                                     'pos': [self.IMG_X,0],
                                     'text': img } )
         elif self.pointer_pos == 1:
-            drive = self.main_lines[1]['source'].next()
-            self.show_device()
+            drive = self.disks.next()
+            self.show_device(self.main_lines[1]['x'], 1)
+
+    def load_prev(self, event):
+        self.info_n = 0
+        drive = self.disks.prev()
+        self.show_device(self.load_line['x'], 1)
+
+    def load_next(self, event):
+        drive = self.disks.next()
+        self.show_device(self.load_line['x'], 1)
 
     def system_prev(self, event):
         self.system_n -= 1
@@ -550,28 +568,28 @@ class BakeryDisplay(list):
             self.system_n = 0
         self.show_system_data()
 
-    def show_device_state(self):
-        if self.main_lines[1]['source'].current() != None and self.main_lines[1]['source'].current().present:
+    def show_device_state(self, x, y):
+        if self.disks.current() != None and self.disks.current().present:
             self.write_queue.put( { 'action': 'bitmap',
-                                    'pos': [1, 1],
+                                    'pos': [x, y],
                                     'bitmap': self.SELECTED} )
         else:
             self.write_queue.put( { 'action': 'bitmap',
-                                    'pos': [1, 1],
+                                    'pos': [x, y],
                                     'bitmap': self.UNSELECTED} )
 
-    def show_device(self):
-        if self.main_lines[1]['source'].current() == None:
+    def show_device(self, x, y):
+        if self.disks.current() == None:
             self.write_queue.put( { 'action': 'write',
                                     'blank': 1,
-                                    'pos': [self.main_lines[1]['x'], 1],
+                                    'pos': [x, y],
                                     'text': '' } )
         else:
             self.write_queue.put( { 'action': 'write',
                                     'blank': 1,
-                                    'pos': [self.main_lines[1]['x'], 1],
-                                    'text': self.main_lines[1]['source'].current() } )
-        self.show_device_state()
+                                    'pos': [x, y],
+                                    'text': self.disks.current() } )
+        self.show_device_state(x-1, y)
 
     def scroll_on(self, event):
         self.scroll = True
