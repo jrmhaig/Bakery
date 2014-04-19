@@ -41,7 +41,8 @@ class BakeryDisplay(list):
 
     # Displays
     DISPLAY_MAIN = 0
-    DISPLAY_SYSTEM = 1
+    DISPLAY_LOAD = 1
+    DISPLAY_SYSTEM = 2
     DISPLAY_WRITING = 99
     DISPLAY_FIRST = DISPLAY_MAIN
     DISPLAY_LAST = DISPLAY_SYSTEM
@@ -65,6 +66,12 @@ class BakeryDisplay(list):
         self.pointer_pos = 0
         self.info_n = 0
 
+        self.load_line = {
+            'source': disks,
+            'info': [ 'model', 'node_path' ],
+            'x': 2
+          }
+
         self.system_data = [
             self.ip_address,
             self.cpu_temp,
@@ -84,7 +91,7 @@ class BakeryDisplay(list):
 
         self.scroll = False
 
-        self.display = self.DISPLAY_MAIN
+        self.display = self.DISPLAY_FIRST
 
         self.write_queue = multiprocessing.Queue()
         self.writer = threading.Thread( target = _lcd_writer,
@@ -217,7 +224,7 @@ class BakeryDisplay(list):
             time.sleep(5)
 
             # Turn listeners back on
-            self.display == self.DISPLAY_MAIN
+            self.display == self.DISPLAY_FIRST
             self.setup_controls()
 
             self.updates = True
@@ -305,6 +312,10 @@ class BakeryDisplay(list):
         self.listener.deregister()
 
         # Settings for all displays
+        # Switch through displays
+        self.listener.register( self.BUTTON_SELECT_DISPLAY,
+                                pifacecad.IODIR_FALLING_EDGE,
+                                self.switch_display )
 
         if self.display == self.DISPLAY_MAIN:
             # Scroll display
@@ -314,10 +325,6 @@ class BakeryDisplay(list):
             self.listener.register( self.BUTTON_SCROLL,
                                     pifacecad.IODIR_RISING_EDGE,
                                     self.scroll_off )
-            # Switch through displays
-            self.listener.register( self.BUTTON_SELECT_DISPLAY,
-                                    pifacecad.IODIR_FALLING_EDGE,
-                                    self.switch_display )
             # Previous and next
             self.listener.register( self.BUTTON_PREV,
                                     pifacecad.IODIR_FALLING_EDGE,
@@ -342,6 +349,10 @@ class BakeryDisplay(list):
             self.listener.register( self.BUTTON_INFO,
                                     pifacecad.IODIR_FALLING_EDGE,
                                     self.show_info )
+
+        elif self.display == self.DISPLAY_LOAD:
+            pass
+
         elif self.display == self.DISPLAY_SYSTEM:
             # Scroll display
             self.listener.register( self.BUTTON_SCROLL,
@@ -350,10 +361,6 @@ class BakeryDisplay(list):
             self.listener.register( self.BUTTON_SCROLL,
                                     pifacecad.IODIR_RISING_EDGE,
                                     self.scroll_off )
-            # Switch through displays
-            self.listener.register( self.BUTTON_SELECT_DISPLAY,
-                                    pifacecad.IODIR_FALLING_EDGE,
-                                    self.switch_display )
             # Previous and next
             self.listener.register( self.BUTTON_PREV,
                                     pifacecad.IODIR_FALLING_EDGE,
@@ -424,12 +431,21 @@ class BakeryDisplay(list):
             # Device
             self.show_device()
 
-        else:
+        elif self.display == self.DISPLAY_SYSTEM:
             self.write_queue.put( { 'action': 'write',
                                     'blank': 1,
                                     'pos': [0,0],
                                     'text': "System status" } )
             self.show_system_data()
+        elif self.display == self.DISPLAY_LOAD:
+            self.write_queue.put( { 'action': 'write',
+                                    'blank': 1,
+                                    'pos': [0,0],
+                                    'text': "Load images" } )
+            self.write_queue.put( { 'action': 'write',
+                                    'blank': 1,
+                                    'pos': [0,1],
+                                    'text': "TODO" } )
 
     def show_system_data(self, rewrite=False):
         """Write the second line of the screen"""
